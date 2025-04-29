@@ -7,13 +7,13 @@ app = Flask(__name__)
 CORS(app)  # 允许前端跨域访问
 
 # neo4j
-driver = GraphDatabase.driver("bolt://127.0.0.1:7687", auth=("neo4j", "password"))
+driver = GraphDatabase.driver("bolt://127.0.0.1:7687", auth=("neo4j", "your_own_password"))
 
 # 配置 MySQL 连接
 db = pymysql.connect(
     host='localhost',
     user='root',
-    password='password',
+    password='your_own_password',
     database='cultural_relics',
     charset='utf8mb4'
 )
