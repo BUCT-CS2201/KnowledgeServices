@@ -9,13 +9,15 @@ app = Flask(__name__)
 CORS(app)  # 允许前端跨域访问
 
 # neo4j
-driver = GraphDatabase.driver("bolt://127.0.0.1:7687", auth=("neo4j", "your_own_password"))
+# driver = GraphDatabase.driver("bolt://127.0.0.1:7687", auth=("neo4j", "your_own_password"))
+driver = GraphDatabase.driver("bolt://127.0.0.1:7687", auth=("neo4j", "password"))
 
 # 配置 MySQL 连接
 db = pymysql.connect(
     host='localhost',
     user='root',
-    password='your_own_password',
+    # password='your_own_password',
+    password='password',
     database='cultural_relics',
     charset='utf8mb4',
     cursorclass=pymysql.cursors.DictCursor
@@ -119,6 +121,32 @@ def register():
                    (username, hashed_password, id_number, phone_number))
     db.commit()
     return jsonify({'status': 'success', 'message': '注册成功'})
+
+
+@app.route('/timeline-data')
+def get_timeline_data():
+    cursor = db.cursor()
+    sql = """
+        SELECT name, description, entry_time, dynasty
+        FROM cultural_relic
+        WHERE entry_time IS NOT NULL
+        ORDER BY entry_time ASC
+    """
+    cursor.execute(sql)
+    rows = cursor.fetchall()
+
+    # 构建时间线事件数据
+    events = []
+    for row in rows:
+        entry_year = row['entry_time']
+        events.append({
+            'name': row['name'],
+            'description': row['description'] or '',
+            'year': entry_year,
+            # 可扩展字段：media, dynasty, etc.
+        })
+
+    return jsonify(events)
 
 
 if __name__ == "__main__":
