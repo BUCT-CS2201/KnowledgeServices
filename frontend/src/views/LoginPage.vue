@@ -88,14 +88,14 @@ const login = async () => {
             isLoggedIn.value = true; // 更新前端响应式变量
             //弹出消息
             ElMessage({
-                message: '登录成功', type: 'success',
+                message: '登录成功', type: data.status,
                 showClose: true, plain: false, grouping: true,
             })
             router.push('/profile'); // 登录成功后跳转到个人信息页面
         } else {
             //弹出错误消息
             ElMessage({
-                message: data.message, type: 'error',
+                message: data.message, type: data.status,
                 showClose: true, plain: true, grouping: true,
             })
         }

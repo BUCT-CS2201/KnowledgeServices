@@ -158,14 +158,14 @@ const register = () => {
             if (data.status === 'success') {
                 //弹出消息
                 ElMessage({
-                    message: '注册成功', type: 'success',
+                    message: '注册成功', type: data.status,
                     showClose: true, plain: true, grouping: true,
                 })
                 router.push('/login');
             } else {
                 //弹出错误消息
                 ElMessage({
-                    message: data.message, type: 'error',
+                    message: data.message, type: data.status,
                     showClose: true, plain: true, grouping: true,
                 })
             }
