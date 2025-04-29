@@ -22,19 +22,32 @@ db = pymysql.connect(
 )
 
 
+# 加密函数
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()[:32]
+
+
 # 获取neo4j数据
-def fetch_graph_data():
+def fetch_graph_data(keyword=None):
     with driver.session() as session:
-        result = session.run("""
+        if keyword:
+            query = """
             MATCH (n)
+            WHERE any(prop IN keys(n) WHERE toString(n[prop]) CONTAINS $keyword)
             OPTIONAL MATCH (n)-[r]->(m)
             RETURN n, r, m
-        """)
+            """
+            result = session.run(query, keyword=keyword)
+        else:
+            result = session.run("""
+                MATCH (n)
+                OPTIONAL MATCH (n)-[r]->(m)
+                RETURN n, r, m
+            """)
         nodes = {}
         links = []
         for record in result:
             n, m, r = record["n"], record["m"], record["r"]
-            # 处理节点 n
             if n.element_id not in nodes:
                 props = dict(n.items())
                 nodes[n.element_id] = {
@@ -43,9 +56,7 @@ def fetch_graph_data():
                     "name": props.get("name", "未命名"),
                     "properties": props
                 }
-            # 处理有关系的情况
             if r is not None and m is not None:
-                # 处理目标节点 m
                 if m.element_id not in nodes:
                     props = dict(m.items())
                     nodes[m.element_id] = {
@@ -63,14 +74,10 @@ def fetch_graph_data():
         return {"nodes": list(nodes.values()), "links": links}
 
 
-# 加密函数
-def hash_password(password):
-    return hashlib.sha256(password.encode()).hexdigest()[:32]
-
-
 @app.route("/graph-data")
 def graph_data():
-    return jsonify(fetch_graph_data())
+    keyword = request.args.get("keyword", default=None)
+    return jsonify(fetch_graph_data(keyword))
 
 
 # 登录
@@ -86,11 +93,11 @@ def login():
     cursor.execute(sql, (phone_number))
     result = cursor.fetchone()
     if result is None:
-        return jsonify({'status': 'fail', 'message': '用户不存在'}), 401
+        return jsonify({'status': 'error', 'message': '用户不存在'}), 401
     if result['password'] == hashed_password:
         return jsonify({'status': 'success', 'message': '登录成功', 'username': result['name']})
     else:
-        return jsonify({'status': 'fail', 'message': '密码错误'}), 401
+        return jsonify({'status': 'error', 'message': '密码错误'}), 401
 
 
 # 注册
@@ -106,7 +113,7 @@ def register():
     cursor = db.cursor()
     cursor.execute("SELECT * FROM user WHERE phone_number = %s", (phone_number,))
     if cursor.fetchone():
-        return jsonify({'status': 'fail', 'message': '此手机号已注册'}), 400
+        return jsonify({'status': 'error', 'message': '此手机号已注册'}), 400
 
     cursor.execute("INSERT INTO user (name, password, id_number, phone_number) VALUES (%s, %s, %s, %s)",
                    (username, hashed_password, id_number, phone_number))

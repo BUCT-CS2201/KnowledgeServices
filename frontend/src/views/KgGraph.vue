@@ -6,22 +6,20 @@
             <!--工具栏 -->
             <h3>工具栏</h3>
             <!--搜索-->
-            <div>
-                <el-input
-                    v-model="search"
-                    style="width: auto"
-                    placeholder="输入名称或属性值"
-                    clearable
-                >
-                    <template #append>
-                        <el-button>
-                            <el-icon>
-                                <Search/>
-                            </el-icon>
-                        </el-button>
-                    </template>
-                </el-input>
-            </div>
+            <el-input
+                v-model="searchKeyword"
+                style="width: auto"
+                placeholder="输入名称或属性值"
+                clearable
+            >
+                <template #append>
+                    <el-button @click="searchGraph">
+                        <el-icon>
+                            <Search/>
+                        </el-icon>
+                    </el-button>
+                </template>
+            </el-input>
             <!--放大缩小保存-->
             <div style="margin-top: 10px;margin-bottom: 10px;" class="flex gap-4">
                 <el-button @click="zoom(1.2)">
@@ -77,28 +75,32 @@
 <script setup>
 import * as d3 from "d3";
 import {onMounted, ref, watch} from "vue";
+import {useRoute} from "vue-router";
 
 const svg = ref(null);
 const selectedNode = ref(null);
 const tableData = ref([]);
-const search = ref('')
+const searchKeyword = ref('')
+const route = useRoute()
 
 let zoomGroup, simulation, zoomHandler;
 
-//挂载
+//挂载知识图谱
 onMounted(async () => {
-    const res = await fetch("http://localhost:5000/graph-data");
-    const data = await res.json();
+    const keyword = route.params.keyword || ''
+    searchKeyword.value = keyword
+    fetchGraph(keyword)
+});
 
+//渲染知识图谱
+function renderGraph(data) {
     const width = window.innerWidth - 250; // 减去 aside 宽度
     const height = window.innerHeight - 60; // 减去 header 高度
-
     const svgEl = d3.select(svg.value)
         .attr("width", width)
         .attr("height", height);
 
     svgEl.selectAll("*").remove(); // 清空旧图
-
     //滚轮缩放
     zoomHandler = d3.zoom().on("zoom", (event) => {
         zoomGroup.attr("transform", event.transform);
@@ -167,8 +169,9 @@ onMounted(async () => {
 
         nodeGroup.attr("transform", d => `translate(${d.x},${d.y})`);
     });
-});
+}
 
+//详情展示
 watch(selectedNode, (newVal) => {
     if (newVal) {
         tableData.value = Object.entries(newVal.properties || {}).map(([key, value]) => ({
@@ -178,17 +181,13 @@ watch(selectedNode, (newVal) => {
     } else {
         tableData.value = [];
     }
-    // console.log(tableData.value)
 });
 
-
-// // 计算：根据搜索过滤节点
-// const filteredNodes = computed(() => {
-//     if (!search.value) return graphData.value.nodes
-//     return graphData.value.nodes.filter(node =>
-//         node.name.includes(search.value)
-//     )
-// })
+//监听搜索框
+watch(() => route.params.keyword, (newKeyword) => {
+    searchKeyword.value = newKeyword || ''
+    fetchGraph(searchKeyword.value)
+})
 
 //拖拽管理
 function drag(simulation) {
@@ -214,7 +213,6 @@ function zoom(factor) {
     const svgEl = d3.select(svg.value);
     svgEl.transition().duration(300).call(zoomHandler.scaleBy, factor);
 }
-
 
 //保存图片
 function saveAs(type) {
@@ -247,6 +245,17 @@ function saveAs(type) {
         };
         img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
     }
+}
+
+const fetchGraph = async (keyword = '') => {
+    const res = await fetch(`http://localhost:5000/graph-data?keyword=${encodeURIComponent(keyword)}`)
+    const data = await res.json()
+    // 重新渲染图谱
+    renderGraph(data)
+}
+
+const searchGraph = () => {
+    fetchGraph(searchKeyword.value)
 }
 
 </script>
