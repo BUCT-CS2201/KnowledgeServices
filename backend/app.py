@@ -1,3 +1,5 @@
+import hashlib
+
 import pymysql
 from flask import Flask, jsonify, request
 from neo4j import GraphDatabase
@@ -15,10 +17,12 @@ db = pymysql.connect(
     user='root',
     password='your_own_password',
     database='cultural_relics',
-    charset='utf8mb4'
+    charset='utf8mb4',
+    cursorclass=pymysql.cursors.DictCursor
 )
 
 
+# 获取neo4j数据
 def fetch_graph_data():
     with driver.session() as session:
         result = session.run("""
@@ -59,26 +63,55 @@ def fetch_graph_data():
         return {"nodes": list(nodes.values()), "links": links}
 
 
+# 加密函数
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()[:32]
+
+
 @app.route("/graph-data")
 def graph_data():
     return jsonify(fetch_graph_data())
 
 
+# 登录
 @app.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
-    username = data.get('username')
+    phone_number = data.get('phone_number')
     password = data.get('password')
+    hashed_password = hash_password(password)
 
     cursor = db.cursor()
-    sql = "SELECT * FROM user WHERE name = %s AND password = %s"
-    cursor.execute(sql, (username, password))
+    sql = "SELECT * FROM user WHERE phone_number = %s"
+    cursor.execute(sql, (phone_number))
     result = cursor.fetchone()
-
-    if result:
-        return jsonify({'status': 'success', 'message': '登录成功'})
+    if result is None:
+        return jsonify({'status': 'fail', 'message': '用户不存在'}), 401
+    if result['password'] == hashed_password:
+        return jsonify({'status': 'success', 'message': '登录成功', 'username': result['name']})
     else:
-        return jsonify({'status': 'fail', 'message': '用户名或密码错误'}), 401
+        return jsonify({'status': 'fail', 'message': '密码错误'}), 401
+
+
+# 注册
+@app.route('/register', methods=['POST'])
+def register():
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+    id_number = data.get('id_number')
+    phone_number = data.get('phone_number')
+    hashed_password = hash_password(password)
+
+    cursor = db.cursor()
+    cursor.execute("SELECT * FROM user WHERE phone_number = %s", (phone_number,))
+    if cursor.fetchone():
+        return jsonify({'status': 'fail', 'message': '此手机号已注册'}), 400
+
+    cursor.execute("INSERT INTO user (name, password, id_number, phone_number) VALUES (%s, %s, %s, %s)",
+                   (username, hashed_password, id_number, phone_number))
+    db.commit()
+    return jsonify({'status': 'success', 'message': '注册成功'})
 
 
 if __name__ == "__main__":

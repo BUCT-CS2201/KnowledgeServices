@@ -6,6 +6,7 @@ import TimeLine from "@/views/TimeLine.vue";
 import QA from "@/views/QA.vue"
 import HomePage from "@/views/HomePage.vue";
 import SelfProfile from "@/views/SelfProfile.vue";
+import RegisterPage from "@/views/RegisterPage.vue";
 
 const routes = [
     {path: '/', redirect: '/login'},
@@ -15,6 +16,7 @@ const routes = [
     {path: '/qa', component: QA},
     {path: '/home', component: HomePage},
     {path: '/profile', component: SelfProfile},
+    {path: '/register', component: RegisterPage},
 ]
 
 const router = createRouter({
