@@ -127,15 +127,15 @@ def register():
 def get_timeline_data():
     cursor = db.cursor()
     sql = """
-        SELECT name, description, entry_time, dynasty
-        FROM cultural_relic
-        WHERE entry_time IS NOT NULL
-        ORDER BY entry_time ASC
+        SELECT cr.name, cr.description, cr.entry_time, ri.image_url
+        FROM cultural_relic cr
+        LEFT JOIN relic_image ri ON cr.relic_id = ri.relic_id AND ri.status = 1
+        WHERE cr.entry_time IS NOT NULL
+        ORDER BY cr.entry_time ASC
     """
     cursor.execute(sql)
     rows = cursor.fetchall()
 
-    # 构建时间线事件数据
     events = []
     for row in rows:
         entry_year = row['entry_time']
@@ -143,7 +143,7 @@ def get_timeline_data():
             'name': row['name'],
             'description': row['description'] or '',
             'year': entry_year,
-            # 可扩展字段：media, dynasty, etc.
+            'image': row['image_url']  # None 表示没有图片
         })
 
     return jsonify(events)
