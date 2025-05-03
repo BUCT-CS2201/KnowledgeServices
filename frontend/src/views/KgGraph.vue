@@ -101,6 +101,13 @@ function renderGraph(data) {
         .attr("height", height);
 
     svgEl.selectAll("*").remove(); // 清空旧图
+
+    //颜色映射
+    const labels = [...new Set(data.nodes.map(n => n.label))]
+    const colorScale = d3.scaleOrdinal()
+        .domain(labels)
+        .range(d3.schemeSet3)
+
     //滚轮缩放
     zoomHandler = d3.zoom().on("zoom", (event) => {
         zoomGroup.attr("transform", event.transform);
@@ -147,11 +154,11 @@ function renderGraph(data) {
 
     nodeGroup.append("circle")
         .attr("r", d => 6 + (d.properties.name?.length || d.label.length) * 6)
-        .style("fill", d => d.label === "Person" ? "#69b3a2" : "#ff7f0e") // Person青绿，Artifact橙色
+        .style("fill", d => colorScale(d.label))
 
     nodeGroup.append("text")
         .text(d => d.name || d.label)
-        .style("fill", "white")
+        .style("fill", "black")
         .style("font-size", "12px")
         .style("text-anchor", "middle")
         .style("dominant-baseline", "central")
@@ -169,6 +176,27 @@ function renderGraph(data) {
 
         nodeGroup.attr("transform", d => `translate(${d.x},${d.y})`);
     });
+    // ---- 添加图例（Legend） ----
+    const legend = svgEl.append("g")
+        .attr("class", "legend")
+        .attr("transform", `translate(${width - 160}, 40)`);  // 图例位置：右上角
+
+    labels.forEach((label, i) => {
+        const g = legend.append("g")
+            .attr("transform", `translate(0, ${i * 25})`);
+
+        g.append("circle")
+            .attr("r", 8)
+            .attr("fill", colorScale(label));
+
+        g.append("text")
+            .text(label)
+            .attr("x", 16)
+            .attr("y", 4)
+            .style("fill", "#333")
+            .style("font-size", "14px");
+    });
+
 }
 
 //详情展示
