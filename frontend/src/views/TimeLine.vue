@@ -23,12 +23,20 @@ const loadTimeline = async () => {
             events: data.map(item => ({
                 start_date: {
                     year: item.year,
-                    month: item.month || 1,
-                    day: item.day || 1
                 },
                 text: {
-                    headline: item.name,
-                    text: item.description
+                    headline: item.type,
+                    text: `
+                        <p><strong>描述：</strong> ${item.description || '无'}</p>
+                        <p><strong>博物馆：</strong> ${item.museum}</p>
+                        <p><strong>类型：</strong> ${item.type}</p>
+                        <p><strong>朝代：</strong> ${item.dynasty}</p>
+                        <p><strong>作者：</strong> ${item.author || '未知'}</p>
+                        <p><strong>尺寸：</strong> ${item.size || '无'}</p>
+                        <p><strong>材质：</strong> ${item.matrials || '无'}</p>
+                        <p><strong>点赞：</strong> ${item.likes_count}</p>
+                        <p><strong>浏览：</strong> ${item.views_count}</p>
+                    `
                 },
                 media: item.image ? {
                     url: item.image,
@@ -47,13 +55,13 @@ const loadTimeline = async () => {
 onMounted(() => {
     if (!window.TL) {
         const script = document.createElement('script')
-        script.src = 'https://cdn.knightlab.com/libs/timeline3/latest/js/timeline.js'
+        script.src = '/libs/timeline3/js/timeline.js'
         script.onload = loadTimeline
         document.body.appendChild(script)
 
         const link = document.createElement('link')
         link.rel = 'stylesheet'
-        link.href = 'https://cdn.knightlab.com/libs/timeline3/latest/css/timeline.css'
+        link.href = '/libs/timeline3/css/timeline.css'
         document.head.appendChild(link)
     } else {
         loadTimeline()

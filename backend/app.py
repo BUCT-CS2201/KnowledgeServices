@@ -9,15 +9,13 @@ app = Flask(__name__)
 CORS(app)  # 允许前端跨域访问
 
 # neo4j
-# driver = GraphDatabase.driver("bolt://127.0.0.1:7687", auth=("neo4j", "your_own_password"))
-driver = GraphDatabase.driver("bolt://127.0.0.1:7687", auth=("neo4j", "password"))
+driver = GraphDatabase.driver("bolt://127.0.0.1:7687", auth=("neo4j", "your_own_password"))
 
 # 配置 MySQL 连接
 db = pymysql.connect(
     host='localhost',
     user='root',
-    # password='your_own_password',
-    password='password',
+    password='your_own_password',
     database='cultural_relics',
     charset='utf8mb4',
     cursorclass=pymysql.cursors.DictCursor
@@ -76,6 +74,7 @@ def fetch_graph_data(keyword=None):
         return {"nodes": list(nodes.values()), "links": links}
 
 
+# 知识图谱可视化
 @app.route("/graph-data")
 def graph_data():
     keyword = request.args.get("keyword", default=None)
@@ -123,15 +122,18 @@ def register():
     return jsonify({'status': 'success', 'message': '注册成功'})
 
 
+# 历史时间线
 @app.route('/timeline-data')
 def get_timeline_data():
     cursor = db.cursor()
     sql = """
-        SELECT cr.name, cr.description, cr.entry_time, ri.image_url
+        SELECT cr.name, cr.museum_id, cr.type, cr.description, cr.size, cr.matrials, 
+        cr.dynasty, cr.likes_count, cr.views_count, cr.author, cr.entry_time, ri.image_url, m.museum_name
         FROM cultural_relic cr
+        join museum m on cr.museum_id = m.museum_id
         LEFT JOIN relic_image ri ON cr.relic_id = ri.relic_id AND ri.status = 1
         WHERE cr.entry_time IS NOT NULL
-        ORDER BY cr.entry_time ASC
+        ORDER BY cr.entry_time ASC;
     """
     cursor.execute(sql)
     rows = cursor.fetchall()
@@ -139,11 +141,22 @@ def get_timeline_data():
     events = []
     for row in rows:
         entry_year = row['entry_time']
+        # 清洗作者字段
+        if row['author'] != '不明':
+            row['author'] = row['author'][row['author'].find('：') + 1:]
         events.append({
             'name': row['name'],
             'description': row['description'] or '',
             'year': entry_year,
-            'image': row['image_url']  # None 表示没有图片
+            'image': row['image_url'],  # None 表示没有图片
+            'museum': row['museum_name'],
+            'type': row['type'],
+            'dynasty': row['dynasty'],
+            'likes_count': row['likes_count'],
+            'views_count': row['views_count'],
+            'size': row['size'],
+            'matrials': row['matrials'],
+            'author': row['author'],
         })
 
     return jsonify(events)
