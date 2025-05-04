@@ -127,7 +127,7 @@ def register():
 def get_timeline_data():
     cursor = db.cursor()
     sql = """
-        SELECT cr.name, cr.museum_id, cr.type, cr.description, cr.size, cr.matrials, 
+        SELECT cr.name, cr.type, cr.description, cr.size, cr.matrials, 
         cr.dynasty, cr.likes_count, cr.views_count, cr.author, cr.entry_time, ri.image_url, m.museum_name
         FROM cultural_relic cr
         join museum m on cr.museum_id = m.museum_id
@@ -160,6 +160,62 @@ def get_timeline_data():
         })
 
     return jsonify(events)
+
+
+@app.route('/search')
+def search_artifacts():
+    query = request.args.get('q', '').strip()
+
+    sql = """
+            SELECT cr.relic_id, cr.name, cr.type, cr.description, cr.size, cr.matrials, 
+                   cr.dynasty, cr.likes_count, cr.views_count, cr.author, cr.entry_time, 
+                   ri.image_url, m.museum_name
+            FROM cultural_relic cr
+            JOIN museum m ON cr.museum_id = m.museum_id
+            LEFT JOIN relic_image ri ON cr.relic_id = ri.relic_id AND ri.status = 1
+            WHERE cr.entry_time IS NOT NULL
+        """
+
+    # 动态拼接关键词搜索条件
+    if query:
+        sql += " AND cr.description LIKE %s"
+
+    try:
+        with db.cursor() as cursor:
+            if query:
+                cursor.execute(sql, ('%' + query + '%',))
+            else:
+                cursor.execute(sql)
+            rows = cursor.fetchall()
+
+        # 构造前端需要的数据格式
+        results = []
+        for row in rows:
+            results.append({
+                "id": row['relic_id'],
+                "type": row['type'],
+                "title": row['name'],
+                "date": row['entry_time'],
+                "image": row['image_url'],
+                "description": row['description'],
+                "size": row['size'],
+                "matrials": row['matrials'],
+                "dynasty": row['dynasty'],
+                "likes_count": row['likes_count'],
+                "views_count": row['views_count'],
+                "author": row['author'],
+                "museum": row['museum_name'],
+            })
+
+        return jsonify({"results": results})
+
+    except Exception as e:
+        print("Error:", e)
+        return jsonify({"error": "Server error"}), 500
+
+    finally:
+        if 'db' in locals():
+            db.close()
 
 
 if __name__ == "__main__":
