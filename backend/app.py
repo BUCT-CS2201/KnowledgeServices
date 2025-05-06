@@ -175,6 +175,7 @@ def get_timeline_data():
     return jsonify(events)
 
 
+# 大页面搜索
 @app.route('/search')
 def search_artifacts():
     query = request.args.get('q', '').strip()
@@ -207,7 +208,7 @@ def search_artifacts():
             results.append({
                 "id": row['relic_id'],
                 "type": row['type'],
-                "title": row['name'],
+                "name": row['name'],
                 "date": row['entry_time'],
                 "image": row['img_url'],
                 "description": row['description'],

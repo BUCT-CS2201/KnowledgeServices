@@ -60,13 +60,64 @@
                 </div>
             </div>
 
-            <div v-else>yes</div>
+            <div v-else class="artifact-table">
+                <el-table :data="artifacts" stripe style="width: 100%" height="600">
+                    <el-table-column label="图片" width="200">
+                        <template #default="{ row }">
+                            <div style="cursor: pointer" @click="goToDetail(row.id)">
+                                <el-image
+                                    :src="row.image"
+                                    style="width: 100%; height: auto; object-fit: cover;"
+                                    v-if="row.image"
+                                ></el-image>
+                                <span v-else>暂无图片</span>
+                            </div>
+                        </template>
+                    </el-table-column>
+                    <el-table-column label="名称" width="150">
+                        <template #default="{ row }">
+                            <span style="cursor: pointer" @click="goToDetail(row.id)">
+                                {{ row.name }}
+                            </span>
+                        </template>
+                    </el-table-column>
+                    <el-table-column label="类型/材质" width="150">
+                        <template #default="{ row }">
+                            <div>{{ row.type }} / {{ row.matrials }}</div>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="description" label="描述" width="180">
+                    </el-table-column>
+                    <el-table-column label="朝代/作者" width="150">
+                        <template #default="{ row }">
+                            <div>{{ row.dynasty }} / {{ row.author }}</div>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="size" label="大小" width="150">
+                    </el-table-column>
+                    <el-table-column prop="museum" label="博物馆" width="150"></el-table-column>
+                </el-table>
+            </div>
 
             <div v-if="artifacts.length === 0 && searched" class="text-gray-500 mt-4">
                 搜索结果为空
             </div>
         </el-container>
     </div>
+
+    <!--回到顶部-->
+    <el-backtop :right="100" :bottom="100" style="width: 100px">
+        <div style="
+        width: 100px;
+        background-color: black;
+        line-height: 50px;
+        color: white;
+        font-size: medium;
+        text-align: center">
+            <el-icon><Top /></el-icon>回到顶部
+        </div>
+    </el-backtop>
+
 </template>
 
 <script setup>
@@ -86,6 +137,7 @@ const goToDetail = (id) => {
     router.push(`/detail/${id}`)
 }
 
+
 const handleSearch = (query) => {
     searchQuery.value = query
     fetchArtifacts(query)
@@ -94,8 +146,12 @@ const handleSearch = (query) => {
 
 onMounted(() => {
     fetchArtifacts();
-})
-
+    // 检查 URL Hash，如果包含 #table 则强制表格视图
+    if (window.location.hash === '#table') {
+        isgrid.value = false;
+        activeMenu.value = '4';
+    }
+});
 const fetchArtifacts = async () => {
     searched.value = true
     try {
@@ -108,14 +164,18 @@ const fetchArtifacts = async () => {
     }
 }
 const switch2Table = () => {
-    activeMenu.value = '4'
+    activeMenu.value = '4';
     isgrid.value = false;
-}
+    localStorage.setItem('viewMode', 'table');
+    window.location.hash = 'table'; // 添加 #table
+};
 
 const switch2Grid = () => {
-    activeMenu.value = '5'
+    activeMenu.value = '5';
     isgrid.value = true;
-}
+    localStorage.setItem('viewMode', 'grid');
+    window.location.hash = ''; // 移除 Hash（或改为 #grid）
+};
 
 const handleMenuSelect = (index) => {
     activeMenu.value = index
@@ -136,6 +196,11 @@ const clear = () => {
     column-count: 4;
     column-gap: 20px;
     padding: 10px;
+}
+
+.artifact-table {
+    margin: 20px auto;
+
 }
 
 @media (max-width: 1200px) {
@@ -176,6 +241,12 @@ const clear = () => {
 
 .switch_tab .el-menu-item.selected {
     border: 2px solid black;
+}
+
+:deep(.el-table__header) {
+    --el-table-header-bg-color: rgba(245, 245, 245);
+    --el-table-header-text-color: black;
+    font-size: larger;
 }
 
 </style>
