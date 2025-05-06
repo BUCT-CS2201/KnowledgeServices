@@ -153,16 +153,46 @@ function renderGraph(data) {
         .on("click", (_, d) => selectedNode.value = d);
 
     nodeGroup.append("circle")
-        .attr("r", d => 6 + (d.properties.name?.length || d.label.length) * 6)
+        .attr("r", d => {
+            const length = d.properties.name?.length || d.label.length;
+            return Math.min(2 + length * 6, 40);  // 最大半径限制为 40
+        })
         .style("fill", d => colorScale(d.label))
 
-    nodeGroup.append("text")
-        .text(d => d.name || d.label)
-        .style("fill", "black")
-        .style("font-size", "12px")
-        .style("text-anchor", "middle")
-        .style("dominant-baseline", "central")
-        .style("pointer-events", "none");
+    nodeGroup.append("text").each(function (d) {
+        const text = d.name || d.label;
+        const lines = [];
+
+        if (text.length > 7) {
+            lines.push(text.slice(0, 4));
+            lines.push(text.slice(4, 8) + "...");
+        } else {
+            lines.push(text);
+        }
+
+        const textElement = d3.select(this)
+            .style("fill", "black")
+            .style("font-size", "12px")
+            .style("text-anchor", "middle")
+            .style("dominant-baseline", "central")
+            .style("pointer-events", "none");
+
+        if (lines.length === 1) {
+            // 单行，垂直居中
+            textElement.append("tspan")
+                .attr("x", 0)
+                .attr("dy", 0)
+                .text(lines[0]);
+        } else {
+            // 多行，第一行上移，第二行下移
+            lines.forEach((line, i) => {
+                textElement.append("tspan")
+                    .attr("x", 0)
+                    .attr("dy", i === 0 ? "-0.5em" : "1em")
+                    .text(line);
+            });
+        }
+    });
 
     simulation.on("tick", () => {
         link.attr("x1", d => d.source.x)

@@ -24,7 +24,7 @@ db = pymysql.connect(
 
 # 加密函数
 def hash_password(password):
-    return hashlib.sha256(password.encode()).hexdigest()[:32]
+    return hashlib.md5(password.encode()).hexdigest()
 
 
 # 获取neo4j数据
@@ -36,6 +36,7 @@ def fetch_graph_data(keyword=None):
             WHERE any(prop IN keys(n) WHERE toString(n[prop]) CONTAINS $keyword)
             OPTIONAL MATCH (n)-[r]->(m)
             RETURN n, r, m
+            limit 25
             """
             result = session.run(query, keyword=keyword)
         else:
@@ -43,6 +44,7 @@ def fetch_graph_data(keyword=None):
                 MATCH (n)
                 OPTIONAL MATCH (n)-[r]->(m)
                 RETURN n, r, m
+                limit 25
             """)
         nodes = {}
         links = []
