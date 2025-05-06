@@ -12,22 +12,35 @@
                         </div>
                     </template>
                     <!--表单-->
-                    <el-form style="max-width: 400px; margin: 10px auto;" label-width="auto" :size="'large'"
-                        :model="form" :rules="rules" ref="formRef" status-icon router>
+                    <el-form
+                        style="max-width: 400px; margin: 10px auto;"
+                        label-width="auto"
+                        :size="'large'"
+                        :model="form"
+                        :rules="rules"
+                        ref="formRef"
+                        status-icon
+                        router
+                    >
                         <el-form-item label="手机号码" style="margin-bottom: 40px;" prop="phone_number">
-                            <el-input v-model="form.phone_number" autocomplete="off" />
+                            <el-input v-model="form.phone_number" autocomplete="off"/>
                         </el-form-item>
                         <el-form-item label="密码" prop="password" style="margin-bottom: 40px;">
-                            <el-input v-model="form.password" type="password" autocomplete="off" show-password />
+                            <el-input
+                                v-model="form.password"
+                                type="password"
+                                autocomplete="off"
+                                show-password
+                            />
                         </el-form-item>
                     </el-form>
                     <div style="text-align: center;margin-top: 30px;">
                         <el-button color="black" :dark="isDark" @click="login"
-                            style="border-radius: var(--el-border-radius-small);width: 150px;height: 40px;">登录
+                                   style="border-radius: var(--el-border-radius-small);width: 150px;height: 40px;">登录
                         </el-button>
                         <el-button color="black" :dark="isDark" @click="resetForm"
-                            style="border-radius: var(--el-border-radius-small);width: 150px;height: 40px;margin-left: 30px"
-                            plain>清空
+                                   style="border-radius: var(--el-border-radius-small);width: 150px;height: 40px;margin-left: 30px"
+                                   plain>清空
                         </el-button>
                         <div style="margin-top: 10px;">
                             <el-text class="">没有账号？去
@@ -43,9 +56,9 @@
 </template>
 
 <script setup>
-import { onMounted, ref, inject } from 'vue'
-import { useRouter } from "vue-router";
-import { ElMessage } from "element-plus";
+import {onMounted, ref, inject} from 'vue'
+import {useRouter} from "vue-router";
+import {ElMessage} from "element-plus";
 
 const formRef = ref(null)
 const router = useRouter()
@@ -61,7 +74,7 @@ const login = async () => {
         // console.log(phone_number, password)
         const res = await fetch('http://localhost:5000/login', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
                 phone_number: form.value.phone_number,
                 password: form.value.password
@@ -78,7 +91,7 @@ const login = async () => {
                 message: '登录成功', type: data.status,
                 showClose: true, plain: false, grouping: true,
             })
-            router.push('/detail'); // 登录成功后跳转到个人信息页面
+            router.push('/profile'); // 登录成功后跳转到个人信息页面
         } else {
             //弹出错误消息
             ElMessage({
@@ -108,7 +121,7 @@ const resetForm = () => {
 //表单校验规则
 const rules = {
     password: [
-        { required: true, message: '请输入密码', trigger: 'blur' },
+        {required: true, message: '请输入密码', trigger: 'blur'},
         {
             validator: (rule, value, callback) => {
                 if (value.length < 6) {
@@ -120,7 +133,7 @@ const rules = {
         }
     ],
     phone_number: [
-        { required: true, message: '请输入手机号', trigger: 'blur' },
+        {required: true, message: '请输入手机号', trigger: 'blur'},
         {
             pattern: /^1[3-9]\d{9}$/,
             message: '手机号格式不正确',
