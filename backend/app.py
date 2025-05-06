@@ -141,10 +141,10 @@ def get_timeline_data():
     cursor = db.cursor()
     sql = """
         SELECT cr.name, cr.type, cr.description, cr.size, cr.matrials, 
-        cr.dynasty, cr.likes_count, cr.views_count, cr.author, cr.entry_time, ri.image_url, m.museum_name
+        cr.dynasty, cr.likes_count, cr.views_count, cr.author, cr.entry_time, ri.img_url, m.museum_name
         FROM cultural_relic cr
         join museum m on cr.museum_id = m.museum_id
-        LEFT JOIN relic_image ri ON cr.relic_id = ri.relic_id AND ri.status = 1
+        LEFT JOIN relic_image ri ON cr.relic_id = ri.relic_id
         WHERE cr.entry_time IS NOT NULL
         ORDER BY cr.entry_time ASC;
     """
@@ -161,7 +161,7 @@ def get_timeline_data():
             'name': row['name'],
             'description': row['description'] or '',
             'year': entry_year,
-            'image': row['image_url'],  # None 表示没有图片
+            'image': row['img_url'],  # None 表示没有图片
             'museum': row['museum_name'],
             'type': row['type'],
             'dynasty': row['dynasty'],
@@ -182,10 +182,10 @@ def search_artifacts():
     sql = """
             SELECT cr.relic_id, cr.name, cr.type, cr.description, cr.size, cr.matrials, 
                    cr.dynasty, cr.likes_count, cr.views_count, cr.author, cr.entry_time, 
-                   ri.image_url, m.museum_name
+                   ri.img_url, m.museum_name
             FROM cultural_relic cr
             JOIN museum m ON cr.museum_id = m.museum_id
-            LEFT JOIN relic_image ri ON cr.relic_id = ri.relic_id AND ri.status = 1
+            LEFT JOIN relic_image ri ON cr.relic_id = ri.relic_id
             WHERE cr.entry_time IS NOT NULL
         """
 
@@ -209,7 +209,7 @@ def search_artifacts():
                 "type": row['type'],
                 "title": row['name'],
                 "date": row['entry_time'],
-                "image": row['image_url'],
+                "image": row['img_url'],
                 "description": row['description'],
                 "size": row['size'],
                 "matrials": row['matrials'],
