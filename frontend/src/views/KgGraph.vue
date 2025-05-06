@@ -66,7 +66,8 @@
 
         </el-aside>
         <!-- 图谱区域 -->
-        <el-main>
+        <el-main v-loading="loading"
+                 element-loading-text="Loading...">
             <svg style="width: 100%;" ref="svg"></svg>
         </el-main>
     </el-container>
@@ -76,12 +77,15 @@
 import * as d3 from "d3";
 import {onMounted, ref, watch} from "vue";
 import {useRoute} from "vue-router";
+import {ElMessage} from "element-plus";
 
 const svg = ref(null);
 const selectedNode = ref(null);
 const tableData = ref([]);
-const searchKeyword = ref('')
-const route = useRoute()
+const searchKeyword = ref('');
+const route = useRoute();
+const loading = ref(false);
+
 
 let zoomGroup, simulation, zoomHandler;
 
@@ -150,7 +154,13 @@ function renderGraph(data) {
         .data(data.nodes)
         .enter().append("g")
         .call(drag(simulation))
-        .on("click", (_, d) => selectedNode.value = d);
+        .on("click", (_, d) => {
+            if (loading.value) {
+                ElMessage.warning("图谱加载中，请稍后");
+                return;
+            }
+            selectedNode.value = d;
+        });
 
     nodeGroup.append("circle")
         .attr("r", d => {
@@ -268,12 +278,20 @@ function drag(simulation) {
 
 //缩放管理
 function zoom(factor) {
+    if (loading.value) {
+        ElMessage.warning("图谱加载中，请稍后");
+        return;
+    }
     const svgEl = d3.select(svg.value);
     svgEl.transition().duration(300).call(zoomHandler.scaleBy, factor);
 }
 
 //保存图片
 function saveAs(type) {
+    if (loading.value) {
+        ElMessage.warning("图谱加载中，请稍后");
+        return;
+    }
     const svgElement = svg.value;
     const svgData = new XMLSerializer().serializeToString(svgElement);
 
@@ -306,14 +324,20 @@ function saveAs(type) {
 }
 
 const fetchGraph = async (keyword = '') => {
-    const res = await fetch(`http://localhost:5000/graph-data?keyword=${encodeURIComponent(keyword)}`)
-    const data = await res.json()
-    // 重新渲染图谱
-    renderGraph(data)
+    loading.value = true; // 开始加载
+    try {
+        const res = await fetch(`http://localhost:5000/graph-data?keyword=${encodeURIComponent(keyword)}`);
+        const data = await res.json();
+        renderGraph(data);
+    } catch (e) {
+        ElMessage.warning("图谱加载中...");
+    } finally {
+        loading.value = false; // 加载完成
+    }
 }
 
 const searchGraph = () => {
-    fetchGraph(searchKeyword.value)
+    fetchGraph(searchKeyword.value);
 }
 
 </script>

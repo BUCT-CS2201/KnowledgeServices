@@ -4,8 +4,13 @@ import pymysql
 from flask import Flask, jsonify, request
 from neo4j import GraphDatabase
 from flask_cors import CORS
+from flask_caching import Cache
 
 app = Flask(__name__)
+# 使用内存缓存
+app.config['CACHE_TYPE'] = 'SimpleCache'
+app.config['CACHE_DEFAULT_TIMEOUT'] = 60  # 缓存默认时间，单位秒
+cache = Cache(app)
 CORS(app)  # 允许前端跨域访问
 
 # neo4j
@@ -74,6 +79,12 @@ def fetch_graph_data(keyword=None):
                     "label": r.type
                 })
         return {"nodes": list(nodes.values()), "links": links}
+
+
+# 可缓存的函数（关键字参数必须参与 key 生成）
+@cache.memoize(timeout=120)  # 设置缓存 2 分钟
+def fetch_graph_data_cached(keyword=None):
+    return fetch_graph_data(keyword)
 
 
 # 知识图谱可视化
