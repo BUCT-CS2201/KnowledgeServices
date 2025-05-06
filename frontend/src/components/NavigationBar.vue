@@ -34,7 +34,7 @@ const handleSelect = (index) => {
         active-text-color="#000"
         router
     >
-        <el-menu-item index="/home" style="margin: auto 20px;font-size: larger;">海外文物知识服务子系统
+        <el-menu-item class="home" index="/home">海外文物知识服务子系统
         </el-menu-item>
         <el-menu-item index="/graph" style="margin-left: auto">知识图谱</el-menu-item>
         <el-menu-item index="/timeline">历史时间线</el-menu-item>
@@ -69,5 +69,11 @@ const handleSelect = (index) => {
     --el-menu-horizontal-height: 70px;
     --el-menu-hover-text-color: grey;
     --el-menu-hover-bg-color: white;
+}
+
+.home {
+    margin: auto 20px;
+    font-size: larger;
+    border-bottom: none !important;
 }
 </style>

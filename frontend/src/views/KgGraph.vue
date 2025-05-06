@@ -330,7 +330,10 @@ const fetchGraph = async (keyword = '') => {
         const data = await res.json();
         renderGraph(data);
     } catch (e) {
-        ElMessage.warning("图谱加载中...");
+        ElMessage({
+            message: '知识图谱加载失败', type: 'error',
+            showClose: true, plain: false, grouping: true,
+        });
     } finally {
         loading.value = false; // 加载完成
     }

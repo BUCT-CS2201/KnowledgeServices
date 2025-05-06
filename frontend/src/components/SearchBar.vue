@@ -55,5 +55,7 @@ const searchQuery = ref('')
 </template>
 
 <style scoped>
-
+input::placeholder{
+    font-family: "Georgia", "Times New Roman", Times, serif;
+}
 </style>
