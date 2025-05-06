@@ -18,7 +18,7 @@ const routes = [
     {path: '/home', component: HomePage},
     {path: '/profile', component: SelfProfile},
     {path: '/register', component: RegisterPage},
-    {path: '/detail', component: DetailImformation},
+    {path: '/detail/:id', component: DetailImformation},
 ]
 
 const router = createRouter({
