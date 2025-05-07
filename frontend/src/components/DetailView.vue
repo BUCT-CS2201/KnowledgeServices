@@ -7,22 +7,22 @@
                 </div>
                 <div class="bm" ref="leftBm">
                     <ul>
-                        <li @click="zoomIn">
-                            <h5>Zoom In</h5>
+                        <li @click="zoomIn" style="cursor: pointer;">
+                            <h5>放大</h5>
                             <img src="/image/zoom-in.png" alt="">
                         </li>
-                        <li @click="zoomOut">
-                            <h5>Zoom Out</h5>
+                        <li @click="zoomOut" style="cursor: pointer;">
+                            <h5>缩小</h5>
                             <img src="/image/zoom-out.png" alt="">
                         </li>
-                        <li>
-                            <h5>Thumbs Up</h5>
+                        <li style="cursor">
+                            <h5>点赞</h5>
+                        </li>
+                        <li @click="updatelike" style="cursor">
+                            <h5>收藏{{likes_count }}</h5>
                         </li>
                         <li>
-                            <h5>Bookmark</h5>
-                        </li>
-                        <li>
-                            <h5>Views</h5>
+                            <h5>浏览记录{{ views_count+1 }}</h5>
                         </li>
                     </ul>
                 </div>
@@ -31,45 +31,41 @@
                 <div class="content">
                     <div class="r-main">
                         <div class="m-content">
-                            <h3>create_time+name</h3>
-                            <p>entry_time</p>
-                            <h3>author</h3>
-                            <p>region+dynasty</p>
-                            <p>matrials+type</p>
-                            <p>location</p>
+                            <!-- <h1>{{ create_time }}</h1> -->
+                            <h1>{{ name }}</h1>
+                            <h3>{{ entry_time }}</h3>
+                            <h1>{{ author }}</h1>
+                            <p style="text-decoration: underline;">{{ dynasty }}</p>
+                            <p>{{ matrials }}/{{ type }}</p>
+                            <p style="text-decoration: underline;">{{ size }}</p>
+                            <p>{{ location }}</p>
                         </div>
-
                     </div>
                     <div class="r-bm">
-                        <h1>Download,Share</h1>
+                        <h1>下载，分享</h1>
                         <ul>
-                            <li>
-                                <h4>Download</h4>
+                            <li @click="download" style="cursor: pointer;">
+                                <h4>下载</h4>
                                 <img src="/image/download.png" alt="">
                             </li>
-                            <li>
-                                <h4>Share</h4>
+                            <li @click="share" style="cursor: pointer;">
+                                <h4>分享</h4>
                                 <img src="/image/share.png" alt="">
                             </li>
                         </ul>
                         <div class="know">
-                            <h1>Description</h1>
-                            <p>Hottō Enmyō Kokushi, is a posthumous title bestowed upon the Zen Buddhist monk Shinchi
-                                Kakushin
-                                (1203–1298) by the emperor Go-Daigo. The title means “perfectly awakened national
-                                teacher of the Dharma
-                                lamp.” Considered a fine example of “Kamakura realism,” while downplaying detail in the
-                                body, the
-                                sculpture emphasizes fidelity in representing the visage of Kakushin.
+                            <h1>描述</h1>
+                            <p>
+                                {{ description }}
                             </p>
                         </div>
                         <div class="comment">
                             <div class="title">
                                 <h1>Comment</h1>
                                 <img class="add" @click="showimage" v-show="!isShow" ref="myadd" src="/image/add.png"
-                                     alt="">
+                                    alt="">
                                 <img class="jian" v-show="isShow" @click="hideimage" ref="myjian" src="/image/jian.png"
-                                     alt="">
+                                    alt="">
                             </div>
                             <div class="c-content" v-show="isShow">
                                 <div class="btn">
@@ -83,27 +79,233 @@
                 </div>
             </div>
         </div>
-
+    </div>
+    <div class="reco">
+        <div class="r-left">
+            <div class="l-content">
+                <img :src="imageSrc" alt="">
+                <!-- <h3>推荐组件</h3>
+                <p>???</p> -->
+                <div class="l-content">
+                    <!-- <h1>{{ create_time }}</h1> -->
+                    <h1>{{ name }}</h1>
+                    <h3>{{ entry_time }}</h3>
+                    <h1>{{ author }}</h1>
+                    <p style="text-decoration: underline;">{{ dynasty }}</p>
+                    <p>{{ matrials }}/{{ type }}</p>
+                    <p style="text-decoration: underline;">{{ size }}</p>
+                    <p>{{ location }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="r-right">
+            <h1>相关推荐</h1>
+            <div class="theme">
+                <div class="title">
+                    <h1>主题</h1>
+                </div>
+                <ul class="themeul" v-if="name_list.length>0">
+                    <li v-for="item in name_list" :key="item.relic_id" @click="goto_next(item.relic_id)">
+                        <div v-if="item.img_url">
+                            <img :src="item.img_url" alt="relic image" />
+                        </div>
+                        <el-empty v-else description="没有图片" />
+                        <div>
+                        <h3>{{ item.name }}</h3>
+                        <p>{{ item.author }}</p>
+                        <p>{{ item.dynasty }}</p>
+                        <p>{{ item.description }}</p>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+            <div class="author" v-if="author_list.length>0">
+                <div class="title">
+                    <h1>作者</h1>
+                </div>
+                <ul class="authorul" >
+                    <li v-for="item in author_list" :key="item.relic_id" @click="goto_next(item.relic_id)">
+                        <div v-if="item.img_url">
+                            <img :src="item.img_url" alt="relic image" />
+                        </div>
+                        <el-empty v-else description="没有图片" />
+                        <div>
+                        <h3>{{ item.name }}</h3>
+                        <p>{{ item.author }}</p>
+                        <p>{{ item.dynasty }}</p>
+                        <p>{{ item.description }}</p>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+            <div class="dynasty" v-if="dynasty_list.length>0">
+                <div class="title">
+                    <h1>朝代</h1>
+                </div>
+                <ul class="dynastyul">
+                    <li v-for="item in dynasty_list" :key="item.relic_id" @click="goto_next(item.relic_id)">
+                        <div v-if="item.img_url">
+                            <img :src="item.img_url" alt="relic image" />
+                        </div>
+                        <el-empty v-else description="没有图片" />
+                        <div>
+                        <h3>{{ item.name }}</h3>
+                        <p>{{ item.author }}</p>
+                        <p>{{ item.dynasty }}</p>
+                        <p>{{ item.description }}</p>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
     </div>
 </template>
 
 <script setup name="DetailView">
-import {ref} from 'vue'
-
+import { ref, onMounted } from 'vue'
+import axios from 'axios'
+// 导入 Element Plus 中的 ElMessage
+import { ElMessage } from 'element-plus'
+import { useRoute, useRouter } from 'vue-router'
+const route = useRoute()
+const id = route.params.id
+// 使用 useRoute 获取路由对象
+const router=useRouter()
+// 从 route.params 中获取动态参数 :id
 // 放大、缩小功能
 let scale = ref(1.0)
-const imageSrc = ref('/image/dog.jpg')
+let imageSrc = ref('')
+let create_time = ref('')
+let name = ref('')
+let entry_time = ref(null)
+let author = ref('')
+let dynasty = ref('')
+let matrials = ref('')
+let size = ref('')
+let type = ref('')
+let location = ref('')
+let description = ref('')
+let name_list = ref([])
+let author_list = ref([])
+let dynasty_list = ref([])
+let views_count = ref(null)
+let likes_count=ref(null)
 
+// 页面打开渲染图片
+// 父组件给子组件image_id
+//根据所给的image_id查找url，根据relic_id查找到详细信息
+async function detailRender(id) {
+    try {
+        let relicData = await axios.get('http://localhost:5000/api/detail_inform', {
+            params: { relic_id: id }
+        })
+        // console.log(relicData)
+        const { img_url,relic_inform,namelist,authorlist,dynastylist } = relicData.data
+        imageSrc.value = img_url
+        name_list.value = namelist
+        console.log(name_list.value)
+        author_list.value = authorlist
+        console.log(author_list.value)
+        console.log(authorlist.length)
+        dynasty_list.value = dynastylist
+        console.log(dynasty_list.value)
+        create_time.value = relic_inform.create_time
+        name.value = relic_inform.name
+        entry_time.value = relic_inform.entry_time
+        author.value = relic_inform.author
+        dynasty.value = relic_inform.dynasty
+        matrials.value = relic_inform.matrials
+        type.value = relic_inform.type
+        size.value = relic_inform.size
+        location.value = relic_inform.museum_id
+        description.value = relic_inform.description
+        views_count.value = relic_inform.views_count
+        likes_count.value=relic_inform.likes_count
+        //进入页面浏览+1
+        axios.put(`http://localhost:5000/api/put_view/${id}`, {
+            views_count:views_count.value+1
+        })
+    } catch (error) {
+        // 显示错误信息给用户
+        ElMessage({
+            message: error.response.statusText,
+            type: 'false',
+        })
+    }
+}
+onMounted(() => {
+    detailRender(id);
+})
+
+
+//点击点赞like+1
+function updatelike() {
+    likes_count.value += 1
+    axios.put(`http://localhost:5000/api/put_like/${id}`, {
+            likes_count:likes_count.value
+    })
+}
+//放大
 function zoomIn() {
     if (scale.value <= 3) {
         scale.value += 0.2
         console.log(scale.value)
     }
 }
-
+//缩小
 function zoomOut() {
     if (scale.value > 1) {
         scale.value -= 0.2
+    }
+}
+
+//下载
+// 实现 Download 功能
+function download() {
+    const imageUrl = imageSrc.value;  // 获取当前图片的 URL
+    if (!imageUrl) {
+        ElMessage({
+            message: 'No image available for download',
+            type: 'error',
+        });
+        return;
+    }
+    const link = document.createElement('a');
+    link.href = imageUrl;  // 设置下载链接为图片的 URL
+    link.download = imageUrl.split('/').pop();  // 设置下载文件名为图片的文件名
+    link.click();  // 触发下载
+}
+
+//分享
+// 分享功能
+function share() {
+    const shareData = {
+        title: name.value,
+        text: description.value,
+        url: window.location.href, // 分享当前页面的 URL
+    };
+
+    if (navigator.share) {
+        // 如果浏览器支持 Web Share API
+        navigator.share(shareData)
+            .then(() => {
+                ElMessage({
+                    message: 'Shared successfully!',
+                    type: 'success',
+                });
+            })
+            .catch((error) => {
+                ElMessage({
+                    message: 'Share failed: ' + error,
+                    type: 'error',
+                });
+            });
+    } else {
+        // 如果不支持 Web Share API，您可以提供一些替代方案
+        ElMessage({
+            message: 'Your browser does not support sharing.',
+            type: 'warning',
+        });
     }
 }
 
@@ -118,7 +320,6 @@ function showimage() {
 function hideimage() {
     isShow.value = false
 }
-
 // 监听右侧滚动
 const leftSide = ref(null)
 const rightSide = ref(null)
@@ -146,13 +347,19 @@ function handleScroll() {
         leftSide.value.style.overflow = 'hidden'
     }
 }
+//点击图片导向详情页
+function goto_next(id) {
+    console.log(id)
+    router.push(`/detail/${id}`)
+}
+
+
 </script>
 
-<style scoped>
+<style>
 .detail {
     width: 100%;
     min-height: 88vh;
-    background-color: skyblue;
     margin-top: 20px;
 }
 
@@ -194,7 +401,7 @@ function handleScroll() {
     display: flex;
     overflow: hidden;
     justify-content: center;
-    background-color: pink;
+    background-color: #f5f5f5;
 }
 
 .left img {
@@ -247,7 +454,7 @@ function handleScroll() {
     overflow: hidden;
     width: 100%;
     height: 500px;
-    background-color: greenyellow;
+    background-color: #fff;
 }
 
 .right .r-main .m-content {
@@ -255,15 +462,24 @@ function handleScroll() {
     margin: 20px auto;
 }
 
-.right .r-main .m-content p,
-h3 {
-    margin-top: 10px;
+/* .right .r-main .m-content h1,
+h2,
+p {
+  margin-top: 5px;
+} */
+
+.right .r-main .m-content h1 {
+    font-weight: 400;
+}
+
+.right .r-main .m-content p {
+    font-size: 20px;
 }
 
 .right .r-bm {
     overflow: hidden;
     width: 100%;
-    background-color: #ddd;
+    background-color: #fff;
 }
 
 .right .r-bm h1 {
@@ -347,5 +563,66 @@ h3 {
         position: relative;
         overflow: visible;
     }
+}
+
+/* //recommend */
+.reco {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    gap: 20px;
+    width: 100%;
+    margin-top: 20px;
+}
+
+.r-left {
+    flex: 1 1 300px;
+    display: flex;
+    justify-content: center;
+    width: 400px;
+    height: 800px;
+    background-color: #fff;
+}
+
+.r-left .l-content {
+    width: 85%;
+    background-color: #fff;
+}
+
+.r-left .l-content img {
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+}
+
+.r-right {
+    flex: 2 1 600px;
+    width: 1000px;
+}
+
+.r-right .themeul,.authorul,.dynastyul {
+    margin-top: 10px;
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+    margin: 0; 
+    padding: 0;
+}
+
+.r-right .themeul li,.r-right .authorul li,.r-right .dynastyul li {
+    list-style: none;
+    flex: 1 1 200px;
+}
+
+.r-right .themeul li img,.r-right .authorul li img,.r-right .dynastyul li img {
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+}
+
+.r-right .theme,
+.r-right .author,
+.r-right .dynasty {
+    margin: 10px;
 }
 </style>
