@@ -7,6 +7,7 @@ from flask_cors import CORS
 from flask_caching import Cache
 
 app = Flask(__name__)
+
 # 使用内存缓存
 app.config['CACHE_TYPE'] = 'SimpleCache'
 app.config['CACHE_DEFAULT_TIMEOUT'] = 60  # 缓存默认时间，单位秒
@@ -230,7 +231,126 @@ def search_artifacts():
     finally:
         if 'db' in locals():
             db.close()
+            
+#页面图片
+@app.route('/api/detail_inform', methods=['GET'])
+def get_inform():
+    relic_id = request.args.get('relic_id')
+    
+    if not relic_id:
+        return jsonify({'status': 'error', 'message': 'relic_id is required'}), 400
+    
+    cursor = db.cursor()
+    try:
+        # 获取文物的图片URL
+        sql = "SELECT * FROM relic_image WHERE relic_id = %s"
+        cursor.execute(sql, (relic_id,))
+        result_img = cursor.fetchone()
+        img_url = result_img['img_url'] if result_img else None
+        
+        # 获取文物的详细信息
+        sql = "SELECT * FROM cultural_relic WHERE relic_id = %s"
+        cursor.execute(sql, (relic_id,))
+        result = cursor.fetchone()
+        
+        if not result:
+            return jsonify({'status': 'error', 'message': 'No relic found with this ID'}), 404
+        
+        name = result['name']
+        author = result['author']
+        dynasty = result['dynasty']
+        
+        # 获取相关的文物数据并排除当前文物
+        sql = "SELECT * FROM cultural_relic WHERE name LIKE %s AND relic_id != %s LIMIT 4"
+        cursor.execute(sql, ('%' + name + '%', relic_id))
+        namelist = cursor.fetchall()
 
+        sql = "SELECT * FROM cultural_relic WHERE author LIKE %s AND relic_id != %s LIMIT 4"
+        cursor.execute(sql, ('%' + author + '%', relic_id))
+        authorlist = cursor.fetchall()
+        
+        sql = "SELECT * FROM cultural_relic WHERE dynasty LIKE %s AND relic_id != %s LIMIT 4"
+        cursor.execute(sql, ('%' + dynasty + '%', relic_id))
+        dynastylist = cursor.fetchall()
+        
+        # 合并所有的 relic_id
+        all_relic_ids = [relic['relic_id'] for relic in namelist] + [relic['relic_id'] for relic in authorlist] + [relic['relic_id'] for relic in dynastylist]
+
+        # 查询所有相关 relic_id 对应的图片 URL
+        img_urls_dict = {}
+        if all_relic_ids:
+            sql = "SELECT relic_id, img_url FROM relic_image WHERE relic_id IN (%s)" % ','.join(['%s'] * len(all_relic_ids))
+            cursor.execute(sql, tuple(all_relic_ids))
+            img_urls = cursor.fetchall()
+
+            # 将 img_url 按照 relic_id 存储到字典中
+            for img in img_urls:
+                img_urls_dict[img['relic_id']] = img['img_url']
+
+        # 合并文物信息和图片
+        def combine_list_with_images(relic_list):
+            combined_list = []
+            for relic in relic_list:
+                relic_id = relic['relic_id']
+                img_url = img_urls_dict.get(relic_id, None)
+                combined_list.append({
+                    'relic_id': relic_id,
+                    'name': relic['name'],
+                    'author': relic['author'],
+                    'dynasty': relic['dynasty'],
+                    'description': relic['description'],
+                    'img_url': img_url
+                })
+            return combined_list
+
+        # 合并 namelist、authorlist 和 dynastylist 数据
+        combined_namelist = combine_list_with_images(namelist)
+        combined_authorlist = combine_list_with_images(authorlist)
+        combined_dynastylist = combine_list_with_images(dynastylist)
+
+        return jsonify({
+            'status': 'success',
+            'img_url': img_url,
+            'relic_id': relic_id,
+            'relic_inform': result,
+            'namelist': combined_namelist,  
+            'authorlist': combined_authorlist,  
+            'dynastylist': combined_dynastylist,  
+        }), 200
+
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+    finally:
+        if 'db' in locals():
+            cursor.close()
+
+#提交浏览记录
+@app.route('/api/put_view/<relic_id>',methods=['PUT'])
+def get_view(relic_id):
+    data=request.get_json()
+    print(data)
+    if not data:
+        return jsonify({'status': 'error', 'message': 'views_count is required'}), 400
+    views_count=data['views_count']
+    cursor = db.cursor()
+    sql = "UPDATE cultural_relic SET views_count=%s  WHERE relic_id = %s"
+    cursor.execute(sql, (views_count,relic_id,))
+    db.commit()
+    return jsonify({'status': 'success', 'message': '提交浏览成功'})
+
+#收藏记录
+@app.route('/api/put_like/<relic_id>',methods=['PUT'])
+def get_like(relic_id):
+    data=request.get_json()
+    print(data)
+    if not data:
+        return jsonify({'status': 'error', 'message': 'like_count is required'}), 400
+    likes_count=data['likes_count']
+    cursor = db.cursor()
+    sql = "UPDATE cultural_relic SET likes_count=%s  WHERE relic_id = %s"
+    cursor.execute(sql, (likes_count,relic_id,))
+    db.commit()
+    return jsonify({'status': 'success', 'message': '提交收藏成功'})
 
 if __name__ == "__main__":
     app.run(debug=True)
