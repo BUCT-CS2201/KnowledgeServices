@@ -35,70 +35,12 @@
                 </el-menu-item>
             </el-menu>
 
+            <!--栅格展示视图-->
+            <ArtifactGrid v-if="isgrid" :artifacts="artifacts"></ArtifactGrid>
+            <!--表格展示视图-->
+            <ArtifactTable v-else ref="tableComponent" :artifacts="artifacts"></ArtifactTable>
 
-            <div class="artifact-grid" v-if="isgrid">
-                <div
-                    v-for="artifact in artifacts"
-                    :key="artifact.id"
-                    class="artifact-card"
-                    @click="goToDetail(artifact.id)"
-                    style="cursor: pointer;"
-                >
-                    <el-card style="border: none;border-radius: var(--el-border-radius-small);" shadow="hover">
-                        <el-image :src="artifact.image"
-                                  v-if="artifact.image"
-                                  class="artifact-image"
-                                  alt="artifact image"></el-image>
-                        <el-empty v-else description="无图片" :image-size=100></el-empty>
-                        <el-space direction="vertical" alignment="flex-start">
-                            <el-text size="large" tag="b" style="color: black">{{ artifact.type }}</el-text>
-                            <el-text tag="b">{{ artifact.matrials }} &nbsp;&nbsp; {{ artifact.dynasty }}</el-text>
-                            <el-text>{{ artifact.date }}</el-text>
-                        </el-space>
-
-                    </el-card>
-                </div>
-            </div>
-
-            <div v-else class="artifact-table">
-                <el-table :data="artifacts" stripe style="width: 100%" height="600">
-                    <el-table-column label="图片" width="200">
-                        <template #default="{ row }">
-                            <div style="cursor: pointer" @click="goToDetail(row.id)">
-                                <el-image
-                                    :src="row.image"
-                                    style="width: 100%; height: auto; object-fit: cover;"
-                                    v-if="row.image"
-                                ></el-image>
-                                <span v-else>暂无图片</span>
-                            </div>
-                        </template>
-                    </el-table-column>
-                    <el-table-column label="名称" width="150">
-                        <template #default="{ row }">
-                            <span style="cursor: pointer" @click="goToDetail(row.id)">
-                                {{ row.name }}
-                            </span>
-                        </template>
-                    </el-table-column>
-                    <el-table-column label="类型/材质" width="150">
-                        <template #default="{ row }">
-                            <div>{{ row.type }} / {{ row.matrials }}</div>
-                        </template>
-                    </el-table-column>
-                    <el-table-column prop="description" label="描述" width="180">
-                    </el-table-column>
-                    <el-table-column label="朝代/作者" width="150">
-                        <template #default="{ row }">
-                            <div>{{ row.dynasty }} / {{ row.author }}</div>
-                        </template>
-                    </el-table-column>
-                    <el-table-column prop="size" label="大小" width="150">
-                    </el-table-column>
-                    <el-table-column prop="museum" label="博物馆" width="150"></el-table-column>
-                </el-table>
-            </div>
-
+            <!--搜索结果为空-->
             <div v-if="artifacts.length === 0 && searched" class="text-gray-500 mt-4">
                 搜索结果为空
             </div>
@@ -106,7 +48,7 @@
     </div>
 
     <!--回到顶部-->
-    <el-backtop :right="100" :bottom="100" style="width: 100px">
+    <el-backtop :right="100" :bottom="100" style="width: 100px" @click="scrollToTop()">
         <div style="
         width: 100px;
         background-color: black;
@@ -114,7 +56,10 @@
         color: white;
         font-size: medium;
         text-align: center">
-            <el-icon><Top /></el-icon>回到顶部
+            <el-icon>
+                <Top/>
+            </el-icon>
+            回到顶部
         </div>
     </el-backtop>
 
@@ -122,27 +67,24 @@
 
 <script setup>
 import {ref, onMounted} from 'vue'
-import {useRouter} from "vue-router";
 import axios from 'axios'
 import SearchBar from '@/components/SearchBar.vue'
+import ArtifactGrid from "@/components/ArtifactGrid.vue";
+import ArtifactTable from "@/components/ArtifactTable.vue";
+import {ElMessage} from "element-plus";
 
 const searchQuery = ref('')
 const artifacts = ref([])
 const searched = ref(false)
-const router = useRouter()
 const isgrid = ref(true)
 const activeMenu = ref('5')
 
-const goToDetail = (id) => {
-    router.push(`/detail/${id}`)
-}
 
-
+//获取搜索内容
 const handleSearch = (query) => {
     searchQuery.value = query
     fetchArtifacts(query)
 }
-
 
 onMounted(() => {
     fetchArtifacts();
@@ -152,6 +94,8 @@ onMounted(() => {
         activeMenu.value = '4';
     }
 });
+
+//获取文物信息
 const fetchArtifacts = async () => {
     searched.value = true
     try {
@@ -160,9 +104,15 @@ const fetchArtifacts = async () => {
         })
         artifacts.value = response.data.results
     } catch (error) {
+        ElMessage({
+            message: '无法获取文物信息', type: 'error',
+            showClose: true, plain: true, grouping: true,
+        })
         console.error('Error fetching artifacts:', error)
     }
 }
+
+//切换表格/栅格视图
 const switch2Table = () => {
     activeMenu.value = '4';
     isgrid.value = false;
@@ -178,12 +128,31 @@ const switch2Grid = () => {
 };
 
 const handleMenuSelect = (index) => {
-    activeMenu.value = index
+    // 只让 Grid/Table 项触发选中样式
+    if (index === '4' || index === '5') {
+        activeMenu.value = index
+    }
 }
 
+//清空搜索条件
 const clear = () => {
     console.log('clear');
 }
+
+// 回到顶部逻辑
+const tableComponent = ref(null)
+
+const scrollToTop = () => {
+    window.scrollTo({top: 0, behavior: 'smooth'})
+    const wrapper = tableComponent.value?.tableWrapper
+    if (wrapper) {
+        const scrollWrap = wrapper.querySelector('.el-scrollbar__wrap')
+        if (scrollWrap) {
+            scrollWrap.scrollTo({top: 0, behavior: 'smooth'})
+        }
+    }
+}
+
 </script>
 
 <style scoped>
@@ -192,61 +161,44 @@ const clear = () => {
     margin: 0 auto;
 }
 
-.artifact-grid {
-    column-count: 4;
-    column-gap: 20px;
-    padding: 10px;
-}
-
-.artifact-table {
-    margin: 20px auto;
-
-}
-
-@media (max-width: 1200px) {
-    .artifact-grid {
-        column-count: 2;
-    }
-}
-
-.artifact-card {
-    break-inside: avoid;
-    margin-bottom: 10px;
-}
-
-.artifact-image {
-    width: 100%;
-    height: auto;
-    object-fit: contain;
-    display: block;
-}
-
+/*栅格表格切换栏样式*/
 .el-menu--horizontal > .el-menu-item:nth-child(2) {
     margin-right: auto;
 }
 
+/*取消原menu样式*/
 .switch_tab {
     --el-menu-hover-text-color: grey;
     --el-menu-hover-bg-color: white;
     border: none !important;
 }
 
+.switch_tab .el-sub-menu__title.is-active {
+    border-bottom: none;
+}
+
+.switch_tab .el-sub-menu__title {
+    transition: none;
+}
+
 .switch_tab .el-menu-item.is-active {
     border-bottom: none;
 }
 
-.switch_tab .el-menu-item {
+.switch_tab .el-menu-item{
     transition: none;
 }
 
+
+/*grid/table被选中*/
 .switch_tab .el-menu-item.selected {
     border: 2px solid black;
 }
 
+/*回到顶部样式*/
 :deep(.el-table__header) {
     --el-table-header-bg-color: rgba(245, 245, 245);
     --el-table-header-text-color: black;
     font-size: larger;
 }
-
 </style>
