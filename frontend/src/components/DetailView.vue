@@ -99,7 +99,9 @@
             </div>
         </div>
         <div class="r-right">
-            <h1>相关推荐</h1>
+            <!-- 判断是否有返回值 -->
+            <h1 v-if="!(name_list.length===0 && author_list.length===0 && dynasty_list.length===0)">相关推荐</h1>
+            <h1 v-else>随机推荐</h1>
             <div class="theme">
                 <div class="title">
                     <h1>主题</h1>
@@ -124,7 +126,7 @@
                     <h1>作者</h1>
                 </div>
                 <ul class="authorul" >
-                    <li v-for="item in author_list" :key="item.relic_id" @click="goto_next(item.relic_id)">
+                    <li v-for="item in author_list" :key="item.relic_id" @click=" goto_next(item.relic_id)">
                         <div v-if="item.img_url">
                             <img :src="item.img_url" alt="relic image" />
                         </div>
@@ -143,7 +145,24 @@
                     <h1>朝代</h1>
                 </div>
                 <ul class="dynastyul">
-                    <li v-for="item in dynasty_list" :key="item.relic_id" @click="goto_next(item.relic_id)">
+                    <li v-for="item in dynasty_list" :key="item.relic_id" @click=" goto_next(item.relic_id)">
+                        <div v-if="item.img_url">
+                            <img :src="item.img_url" alt="relic image" />
+                        </div>
+                        <el-empty v-else description="没有图片" />
+                        <div>
+                        <h3>{{ item.name }}</h3>
+                        <p>{{ item.author }}</p>
+                        <p>{{ item.dynasty }}</p>
+                        <p>{{ item.description }}</p>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+            <!-- 判断是否有返回值 -->
+            <div class="rand" v-if="name_list.length===0 && author_list.length===0 && dynasty_list.length===0">
+                <ul class="dynastyul">
+                    <li v-for="item in randlist" :key="item.relic_id" @click=" goto_next(item.relic_id)">
                         <div v-if="item.img_url">
                             <img :src="item.img_url" alt="relic image" />
                         </div>
@@ -162,13 +181,13 @@
 </template>
 
 <script setup name="DetailView">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted,watch } from 'vue'
 import axios from 'axios'
 // 导入 Element Plus 中的 ElMessage
 import { ElMessage } from 'element-plus'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute ,useRouter} from 'vue-router'
 const route = useRoute()
-const id = route.params.id
+let id = route.params.id
 // 使用 useRoute 获取路由对象
 const router=useRouter()
 // 从 route.params 中获取动态参数 :id
@@ -190,7 +209,7 @@ let author_list = ref([])
 let dynasty_list = ref([])
 let views_count = ref(null)
 let likes_count=ref(null)
-
+let randlist=ref([])
 // 页面打开渲染图片
 // 父组件给子组件image_id
 //根据所给的image_id查找url，根据relic_id查找到详细信息
@@ -200,7 +219,7 @@ async function detailRender(id) {
             params: { relic_id: id }
         })
         // console.log(relicData)
-        const { img_url,relic_inform,namelist,authorlist,dynastylist } = relicData.data
+        const { img_url, relic_inform, namelist, authorlist, dynastylist, rand_list } = relicData.data
         imageSrc.value = img_url
         name_list.value = namelist
         console.log(name_list.value)
@@ -209,6 +228,8 @@ async function detailRender(id) {
         console.log(authorlist.length)
         dynasty_list.value = dynastylist
         console.log(dynasty_list.value)
+        randlist.value = rand_list
+        console.log('rand_list',rand_list)
         create_time.value = relic_inform.create_time
         name.value = relic_inform.name
         entry_time.value = relic_inform.entry_time
@@ -220,7 +241,7 @@ async function detailRender(id) {
         location.value = relic_inform.museum_id
         description.value = relic_inform.description
         views_count.value = relic_inform.views_count
-        likes_count.value=relic_inform.likes_count
+        likes_count.value = relic_inform.likes_count
         //进入页面浏览+1
         axios.put(`http://localhost:5000/api/put_view/${id}`, {
             views_count:views_count.value+1
@@ -235,6 +256,12 @@ async function detailRender(id) {
 }
 onMounted(() => {
     detailRender(id);
+})
+
+//监听id是否改变
+watch(()=>route.params.id, (newvalue) => {
+        console.log(newvalue)
+        detailRender(newvalue);
 })
 
 
