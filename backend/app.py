@@ -231,7 +231,7 @@ def search_artifacts():
     finally:
         if 'db' in locals():
             db.close()
-            
+
 #页面图片
 @app.route('/api/detail_inform', methods=['GET'])
 def get_inform():
@@ -272,6 +272,10 @@ def get_inform():
         sql = "SELECT * FROM cultural_relic WHERE dynasty LIKE %s AND relic_id != %s LIMIT 4"
         cursor.execute(sql, ('%' + dynasty + '%', relic_id))
         dynastylist = cursor.fetchall()
+        
+        sql="SELECT ri.relic_id,ri.img_url,er.author,er.dynasty FROM relic_image ri JOIN cultural_relic er ON ri.relic_id=er.relic_id ORDER BY RAND() LIMIT 4"
+        cursor.execute(sql)
+        rand_list=cursor.fetchall()
         
         # 合并所有的 relic_id
         all_relic_ids = [relic['relic_id'] for relic in namelist] + [relic['relic_id'] for relic in authorlist] + [relic['relic_id'] for relic in dynastylist]
@@ -316,6 +320,7 @@ def get_inform():
             'namelist': combined_namelist,  
             'authorlist': combined_authorlist,  
             'dynastylist': combined_dynastylist,  
+            'rand_list':rand_list
         }), 200
 
     except Exception as e:
@@ -323,6 +328,7 @@ def get_inform():
     finally:
         if 'db' in locals():
             cursor.close()
+
 
 #提交浏览记录
 @app.route('/api/put_view/<relic_id>',methods=['PUT'])
