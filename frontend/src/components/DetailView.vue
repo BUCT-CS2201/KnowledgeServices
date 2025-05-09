@@ -3,26 +3,41 @@
         <div class="main">
             <div class="left" ref="leftSide">
                 <div class="l-img">
-                    <img :src="imageSrc" :style="{ transform: `scale(${scale})` }" alt="">
+                    <img v-if="imageSrc" :src="imageSrc" :style="{ transform: `scale(${scale})` }" alt="">
+                    <el-empty v-else description="无图片"/>
                 </div>
                 <div class="bm" ref="leftBm">
                     <ul>
                         <li @click="zoomIn" style="cursor: pointer;">
                             <h5>放大</h5>
-                            <img src="/image/zoom-in.png" alt="">
+                            <el-icon>
+                                <ZoomIn/>
+                            </el-icon>
                         </li>
                         <li @click="zoomOut" style="cursor: pointer;">
                             <h5>缩小</h5>
-                            <img src="/image/zoom-out.png" alt="">
+                            <el-icon>
+                                <ZoomOut/>
+                            </el-icon>
                         </li>
-                        <li style="cursor">
-                            <h5>点赞</h5>
+                        <li @click="updatelike" style="cursor:pointer;">
+                            <h5>
+                                <el-icon>
+                                    <Pointer/>
+                                </el-icon>
+                                点赞 {{ likes_count }}
+                            </h5>
                         </li>
-                        <li @click="updatelike" style="cursor">
-                            <h5>收藏{{likes_count }}</h5>
+                        <li @click="updatefavorite" style="cursor:pointer;">
+                            <h5>
+                                <el-icon>
+                                    <Star/>
+                                </el-icon>
+                                收藏
+                            </h5>
                         </li>
                         <li>
-                            <h5>浏览记录{{ views_count+1 }}</h5>
+                            <h5>浏览记录 {{ views_count + 1 }}</h5>
                         </li>
                     </ul>
                 </div>
@@ -31,7 +46,6 @@
                 <div class="content">
                     <div class="r-main">
                         <div class="m-content">
-                            <!-- <h1>{{ create_time }}</h1> -->
                             <h1>{{ name }}</h1>
                             <h3>{{ entry_time }}</h3>
                             <h1>{{ author }}</h1>
@@ -46,11 +60,15 @@
                         <ul>
                             <li @click="download" style="cursor: pointer;">
                                 <h4>下载</h4>
-                                <img src="/image/download.png" alt="">
+                                <el-icon :size="20">
+                                    <Download/>
+                                </el-icon>
                             </li>
                             <li @click="share" style="cursor: pointer;">
                                 <h4>分享</h4>
-                                <img src="/image/share.png" alt="">
+                                <el-icon :size="20">
+                                    <Share/>
+                                </el-icon>
                             </li>
                         </ul>
                         <div class="know">
@@ -61,11 +79,13 @@
                         </div>
                         <div class="comment">
                             <div class="title">
-                                <h1>Comment</h1>
-                                <img class="add" @click="showimage" v-show="!isShow" ref="myadd" src="/image/add.png"
-                                    alt="">
-                                <img class="jian" v-show="isShow" @click="hideimage" ref="myjian" src="/image/jian.png"
-                                    alt="">
+                                <h1>评论</h1>
+                                <el-icon class="add" :size="30" @click="showimage" v-show="!isShow" ref="myadd">
+                                    <CirclePlus/>
+                                </el-icon>
+                                <el-icon :size="30" class="jian" v-show="isShow" @click="hideimage" ref="myjian">
+                                    <RemoveFilled/>
+                                </el-icon>
                             </div>
                             <div class="c-content" v-show="isShow">
                                 <div class="btn">
@@ -109,14 +129,14 @@
                 <ul class="themeul" v-if="name_list.length>0">
                     <li v-for="item in name_list" :key="item.relic_id" @click="goto_next(item.relic_id)">
                         <div v-if="item.img_url">
-                            <img :src="item.img_url" alt="relic image" />
+                            <img :src="item.img_url" alt="relic image"/>
                         </div>
-                        <el-empty v-else description="没有图片" />
+                        <el-empty v-else description="没有图片"/>
                         <div>
-                        <h3>{{ item.name }}</h3>
-                        <p>{{ item.author }}</p>
-                        <p>{{ item.dynasty }}</p>
-                        <p>{{ item.description }}</p>
+                            <h3>{{ item.name }}</h3>
+                            <p>{{ item.author }}</p>
+                            <p>{{ item.dynasty }}</p>
+                            <p>{{ item.description }}</p>
                         </div>
                     </li>
                 </ul>
@@ -125,17 +145,17 @@
                 <div class="title">
                     <h1>作者</h1>
                 </div>
-                <ul class="authorul" >
+                <ul class="authorul">
                     <li v-for="item in author_list" :key="item.relic_id" @click=" goto_next(item.relic_id)">
                         <div v-if="item.img_url">
-                            <img :src="item.img_url" alt="relic image" />
+                            <img :src="item.img_url" alt="relic image"/>
                         </div>
-                        <el-empty v-else description="没有图片" />
+                        <el-empty v-else description="没有图片"/>
                         <div>
-                        <h3>{{ item.name }}</h3>
-                        <p>{{ item.author }}</p>
-                        <p>{{ item.dynasty }}</p>
-                        <p>{{ item.description }}</p>
+                            <h3>{{ item.name }}</h3>
+                            <p>{{ item.author }}</p>
+                            <p>{{ item.dynasty }}</p>
+                            <p>{{ item.description }}</p>
                         </div>
                     </li>
                 </ul>
@@ -147,14 +167,14 @@
                 <ul class="dynastyul">
                     <li v-for="item in dynasty_list" :key="item.relic_id" @click=" goto_next(item.relic_id)">
                         <div v-if="item.img_url">
-                            <img :src="item.img_url" alt="relic image" />
+                            <img :src="item.img_url" alt="relic image"/>
                         </div>
-                        <el-empty v-else description="没有图片" />
+                        <el-empty v-else description="没有图片"/>
                         <div>
-                        <h3>{{ item.name }}</h3>
-                        <p>{{ item.author }}</p>
-                        <p>{{ item.dynasty }}</p>
-                        <p>{{ item.description }}</p>
+                            <h3>{{ item.name }}</h3>
+                            <p>{{ item.author }}</p>
+                            <p>{{ item.dynasty }}</p>
+                            <p>{{ item.description }}</p>
                         </div>
                     </li>
                 </ul>
@@ -164,14 +184,14 @@
                 <ul class="dynastyul">
                     <li v-for="item in randlist" :key="item.relic_id" @click=" goto_next(item.relic_id)">
                         <div v-if="item.img_url">
-                            <img :src="item.img_url" alt="relic image" />
+                            <img :src="item.img_url" alt="relic image"/>
                         </div>
-                        <el-empty v-else description="没有图片" />
+                        <el-empty v-else description="没有图片"/>
                         <div>
-                        <h3>{{ item.name }}</h3>
-                        <p>{{ item.author }}</p>
-                        <p>{{ item.dynasty }}</p>
-                        <p>{{ item.description }}</p>
+                            <h3>{{ item.name }}</h3>
+                            <p>{{ item.author }}</p>
+                            <p>{{ item.dynasty }}</p>
+                            <p>{{ item.description }}</p>
                         </div>
                     </li>
                 </ul>
@@ -181,15 +201,15 @@
 </template>
 
 <script setup name="DetailView">
-import { ref, onMounted,watch } from 'vue'
+import {ref, onMounted, watch, nextTick} from 'vue'
 import axios from 'axios'
-// 导入 Element Plus 中的 ElMessage
-import { ElMessage } from 'element-plus'
-import { useRoute ,useRouter} from 'vue-router'
+import {ElMessage} from 'element-plus'
+import {useRoute, useRouter} from 'vue-router'
+
 const route = useRoute()
 let id = route.params.id
 // 使用 useRoute 获取路由对象
-const router=useRouter()
+const router = useRouter()
 // 从 route.params 中获取动态参数 :id
 // 放大、缩小功能
 let scale = ref(1.0)
@@ -208,18 +228,17 @@ let name_list = ref([])
 let author_list = ref([])
 let dynasty_list = ref([])
 let views_count = ref(null)
-let likes_count=ref(null)
-let randlist=ref([])
+let likes_count = ref(null)
+let randlist = ref([])
 // 页面打开渲染图片
 // 父组件给子组件image_id
 //根据所给的image_id查找url，根据relic_id查找到详细信息
 async function detailRender(id) {
     try {
         let relicData = await axios.get('http://localhost:5000/api/detail_inform', {
-            params: { relic_id: id }
+            params: {relic_id: id}
         })
-        // console.log(relicData)
-        const { img_url, relic_inform, namelist, authorlist, dynastylist, rand_list } = relicData.data
+        const {img_url, relic_inform, namelist, authorlist, dynastylist, rand_list} = relicData.data
         imageSrc.value = img_url
         name_list.value = namelist
         console.log(name_list.value)
@@ -229,7 +248,7 @@ async function detailRender(id) {
         dynasty_list.value = dynastylist
         console.log(dynasty_list.value)
         randlist.value = rand_list
-        console.log('rand_list',rand_list)
+        console.log('rand_list', rand_list)
         create_time.value = relic_inform.create_time
         name.value = relic_inform.name
         entry_time.value = relic_inform.entry_time
@@ -244,7 +263,13 @@ async function detailRender(id) {
         likes_count.value = relic_inform.likes_count
         //进入页面浏览+1
         axios.put(`http://localhost:5000/api/put_view/${id}`, {
-            views_count:views_count.value+1
+            views_count: views_count.value + 1
+        })
+        // 页面右侧滑动窗口滚动到顶部
+        nextTick(() => {
+            if (rightSide.value) {
+                rightSide.value.scrollTop = 0
+            }
         })
     } catch (error) {
         // 显示错误信息给用户
@@ -254,14 +279,16 @@ async function detailRender(id) {
         })
     }
 }
+
 onMounted(() => {
+    window.scrollTo(0, 0);
     detailRender(id);
 })
 
 //监听id是否改变
-watch(()=>route.params.id, (newvalue) => {
-        console.log(newvalue)
-        detailRender(newvalue);
+watch(() => route.params.id, (newvalue) => {
+    window.scrollTo(0, 0);
+    detailRender(newvalue);
 })
 
 
@@ -269,9 +296,15 @@ watch(()=>route.params.id, (newvalue) => {
 function updatelike() {
     likes_count.value += 1
     axios.put(`http://localhost:5000/api/put_like/${id}`, {
-            likes_count:likes_count.value
+        likes_count: likes_count.value
     })
 }
+
+//点击收藏
+function updatefavorite() {
+
+}
+
 //放大
 function zoomIn() {
     if (scale.value <= 3) {
@@ -279,6 +312,7 @@ function zoomIn() {
         console.log(scale.value)
     }
 }
+
 //缩小
 function zoomOut() {
     if (scale.value > 1) {
@@ -347,6 +381,7 @@ function showimage() {
 function hideimage() {
     isShow.value = false
 }
+
 // 监听右侧滚动
 const leftSide = ref(null)
 const rightSide = ref(null)
@@ -374,6 +409,7 @@ function handleScroll() {
         leftSide.value.style.overflow = 'hidden'
     }
 }
+
 //点击图片导向详情页
 function goto_next(id) {
     console.log(id)
@@ -627,21 +663,21 @@ p {
     width: 1000px;
 }
 
-.r-right .themeul,.authorul,.dynastyul {
+.r-right .themeul, .authorul, .dynastyul {
     margin-top: 10px;
     display: flex;
     width: 100%;
     justify-content: space-between;
-    margin: 0; 
+    margin: 0;
     padding: 0;
 }
 
-.r-right .themeul li,.r-right .authorul li,.r-right .dynastyul li {
+.r-right .themeul li, .r-right .authorul li, .r-right .dynastyul li {
     list-style: none;
     flex: 1 1 200px;
 }
 
-.r-right .themeul li img,.r-right .authorul li img,.r-right .dynastyul li img {
+.r-right .themeul li img, .r-right .authorul li img, .r-right .dynastyul li img {
     width: 100%;
     height: auto;
     object-fit: cover;
