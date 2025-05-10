@@ -3,50 +3,49 @@
         <el-container direction="vertical" class="p-6">
 
             <!--搜索栏-->
-            <SearchBar @search="handleSearch"></SearchBar>
+            <SearchBar @search="handleSearch" :onAddTag="addTag"></SearchBar>
 
             <!--高级搜索、popular、reset-->
-            <el-row :gutter="24" style="margin: 10px auto;border: 2px solid black;height: 50px;width: 85%">
-                <el-col :span="2">热门</el-col>
-                <el-col :span="20"></el-col>
-                <el-col :span="2">带视频</el-col>
-            </el-row>
+            <div class="popularbox" style="margin: 10px auto;">
+                <el-row :gutter="24">
+                    <el-col :span="2" @click="switchShowPopular()">热门
+                        <el-icon v-if="!isShowPop" style="margin-left: 5px;">
+                            <ArrowDown/>
+                        </el-icon>
+                        <el-icon v-else style="margin-left: 5px;">
+                            <ArrowUp/>
+                        </el-icon>
+                    </el-col>
+                    <el-col :span="17"></el-col>
+                    <el-col :span="2">
+                        <el-button round @click="addTag('带视频')">带视频</el-button>
+                    </el-col>
+                    <!--高级搜索-->
+                    <el-col :span="3" style="margin:auto 0;">
+                        <el-link>高级搜索
+                            <el-icon class="el-icon--right">
+                                <Setting/>
+                            </el-icon>
+                        </el-link>
+                    </el-col>
+                </el-row>
+                <!--热门 静态按钮-->
+                <div v-if="isShowPop" style="margin-top: 10px">
+                    <el-button round @click="addTag('xixixixi')">xixixixi</el-button>
+                    <el-button round @click="addTag('123')">123</el-button>
+                    <el-button round @click="addTag('321')">321</el-button>
+                </div>
+            </div>
 
-            <!--grid\table切换、sortby、显示条数-->
-            <el-row :gutter="24" style="margin: 10px auto;width: 85%">
-                <el-col :span="3" style="margin-top: 5px">显示{{ artifacts.length }}个文物</el-col>
-                <el-col :span="2" @click="clear()" style="margin-top: 5px">清空</el-col>
-                <el-col :span="12"></el-col>
-                <el-col :span="3" style="margin-top: 10px">
-                    <el-dropdown placement="bottom">
-                        <span>
-                          排序方式
-                          <el-icon class="el-icon--right">
-                            <arrow-down/>
-                          </el-icon>
-                        </span>
-                        <template #dropdown>
-                            <el-dropdown-menu>
-                                <el-dropdown-item>时间：新-旧</el-dropdown-item>
-                                <el-dropdown-item>时间：旧-新</el-dropdown-item>
-                                <el-dropdown-item>名称：A-Z</el-dropdown-item>
-                                <el-dropdown-item>名称：Z-A</el-dropdown-item>
-                            </el-dropdown-menu>
-                        </template>
-                    </el-dropdown>
-                </el-col>
-                <el-col :span="2" @click="switch2Table()" :class="['table', isgrid === false ? 'active' : 'inactive']">
-                    表格
-                    <el-icon>
-                        <Operation/>
-                    </el-icon>
-                </el-col>
-                <el-col :span="2" @click="switch2Grid()" :class="['grid', isgrid === true ? 'active' : 'inactive']">栅格
-                    <el-icon>
-                        <Menu/>
-                    </el-icon>
-                </el-col>
-            </el-row>
+            <!--搜索标签-->
+            <div class="tags" style="margin: 10px auto;">
+                <el-tag v-for="(tag,index) in selectedTags" :key="index" round closable size="large"
+                        @close="removeTag(tag)" style="margin: 5px">{{ tag }}
+                </el-tag>
+            </div>
+
+            <!--grid/table切换栏-->
+            <GridTable :len="artifacts.length" ref="GridTableRef" :onAddTag="addTag"></GridTable>
 
             <!--栅格展示视图-->
             <ArtifactGrid v-if="isgrid" :artifacts="artifacts"></ArtifactGrid>
@@ -54,12 +53,11 @@
             <ArtifactTable v-else ref="tableComponent" :artifacts="artifacts"></ArtifactTable>
 
             <!--搜索结果为空-->
-            <div v-if="artifacts.length === 0 && searched" class="text-gray-500 mt-4">
+            <div v-if="artifacts.length === 0 && searched" class="text-gray-500" style="margin: 0 auto">
                 搜索结果为空
             </div>
         </el-container>
     </div>
-
     <!--回到顶部-->
     <el-backtop :right="100" :bottom="100" style="width: 100px" @click="scrollToTop()">
         <div style="
@@ -79,19 +77,26 @@
 </template>
 
 <script setup>
-import {ref, onMounted} from 'vue'
+import {ref, onMounted, computed} from 'vue'
 import axios from 'axios'
 import SearchBar from '@/components/SearchBar.vue'
 import ArtifactGrid from "@/components/ArtifactGrid.vue";
 import ArtifactTable from "@/components/ArtifactTable.vue";
+import GridTable from "@/components/GridTable.vue";
 import {ElMessage} from "element-plus";
+import qs from 'qs';
 
 const searchQuery = ref('')
 const artifacts = ref([])
 const searched = ref(false)
-const isgrid = ref(true)
-const activeMenu = ref('5')
+const GridTableRef = ref(true)
+const isShowPop = ref(false)
+const selectedTags = ref([])
 
+//控制栅格/表格展示
+const isgrid = computed(() => {
+    return GridTableRef.value.isgrid ?? true;
+});
 
 //获取搜索内容
 const handleSearch = (query) => {
@@ -99,21 +104,46 @@ const handleSearch = (query) => {
     fetchArtifacts(query)
 }
 
+//挂载
 onMounted(() => {
     fetchArtifacts();
     // 检查 URL Hash，如果包含 #table 则强制表格视图
     if (window.location.hash === '#table') {
         isgrid.value = false;
-        activeMenu.value = '4';
     }
 });
 
 //获取文物信息
 const fetchArtifacts = async () => {
     searched.value = true
+
+    const sortOptions = ['时间：新-旧', '时间：旧-新', '名称：A-Z', '名称：Z-A']
+    const conditionOptions = ['仅限作者', '仅限标题', '仅限描述', '仅限类型', '仅限朝代', '仅限材料', '仅限尺寸']
+
+    let queryParams = {
+        q: '',
+        sort: '',
+        condition: '',
+        popular: [],
+    }
+
+    for (const tag of selectedTags.value) {
+        if (sortOptions.includes(tag)) {
+            queryParams.sort = tag
+        } else if (conditionOptions.includes(tag)) {
+            queryParams.condition = tag.replace('仅限', '')
+        } else if (tag.startsWith('搜索：')) {
+            queryParams.q = tag.replace('搜索：', '')
+        } else {
+            queryParams.popular.push(tag)
+        }
+    }
+    console.log(queryParams)
+
     try {
         const response = await axios.get('http://localhost:5000/search', {
-            params: {q: searchQuery.value || ''}
+            params: queryParams,
+            paramsSerializer: params => qs.stringify(params, {arrayFormat: 'repeat'})
         })
         artifacts.value = response.data.results
     } catch (error) {
@@ -125,25 +155,6 @@ const fetchArtifacts = async () => {
     }
 }
 
-//切换表格/栅格视图
-const switch2Table = () => {
-    activeMenu.value = '4';
-    isgrid.value = false;
-    localStorage.setItem('viewMode', 'table');
-    window.location.hash = 'table'; // 添加 #table
-};
-
-const switch2Grid = () => {
-    activeMenu.value = '5';
-    isgrid.value = true;
-    localStorage.setItem('viewMode', 'grid');
-    window.location.hash = ''; // 移除 Hash（或改为 #grid）
-};
-
-//清空搜索条件
-const clear = () => {
-    console.log('clear');
-}
 
 // 回到顶部逻辑
 const tableComponent = ref(null)
@@ -159,6 +170,40 @@ const scrollToTop = () => {
     }
 }
 
+//热门标签展示
+const switchShowPopular = () => {
+    isShowPop.value = !isShowPop.value;
+}
+
+// 添加标签（去重）
+function addTag(tag) {
+    //排序互斥\限制条件互斥
+    const sortOptions = ['时间：新-旧', '时间：旧-新', '名称：A-Z', '名称：Z-A']
+    const conditionOptions = ['仅限艺术家', '仅限标题', '仅限描述', '仅限类型', '仅限朝代']
+    const isSortTag = sortOptions.includes(tag)
+    const isConditionTag = conditionOptions.includes(tag)
+    const isSearchTag = tag.startsWith('搜索：')
+    if (isSortTag) {
+        // 删除已有的排序标签
+        selectedTags.value = selectedTags.value.filter(t => !sortOptions.includes(t))
+    } else if (isConditionTag) {
+        // 删除已有的排序标签
+        selectedTags.value = selectedTags.value.filter(t => !conditionOptions.includes(t))
+    } else if (isSearchTag) {
+        selectedTags.value = selectedTags.value.filter(t => !t.startsWith('搜索：'))
+    }
+    //去重
+    if (!selectedTags.value.includes(tag)) {
+        selectedTags.value.push(tag)
+    }
+    fetchArtifacts();
+}
+
+// 移除标签
+function removeTag(tag) {
+    selectedTags.value = selectedTags.value.filter(t => t !== tag);
+    fetchArtifacts();
+}
 </script>
 
 <style scoped>
@@ -167,29 +212,21 @@ const scrollToTop = () => {
     margin: 0 auto;
 }
 
-/*grid/table切换样式*/
-.table,
-.grid {
-    box-sizing: border-box;
-    transition: margin-top 0.5s ease, border 0.5s ease;
-}
-
-.active {
-    border: 2px solid black;
-    padding: 10px;
-    margin-top: 0;
-}
-
-.inactive {
-    margin-top: 10px; /* ✅ 让未选中项略微下沉 */
-    border: none;
-}
-
-
 /*回到顶部样式*/
 :deep(.el-table__header) {
     --el-table-header-bg-color: rgba(245, 245, 245);
     --el-table-header-text-color: black;
     font-size: larger;
+}
+
+.popularbox {
+    border: 2px solid black;
+    width: 80%;
+    padding: 10px 25px;
+}
+
+.tags {
+    width: 80%;
+    padding: 10px 25px;
 }
 </style>

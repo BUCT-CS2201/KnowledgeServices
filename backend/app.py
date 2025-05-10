@@ -42,7 +42,6 @@ def fetch_graph_data(keyword=None):
             WHERE any(prop IN keys(n) WHERE toString(n[prop]) CONTAINS $keyword)
             OPTIONAL MATCH (n)-[r]->(m)
             RETURN n, r, m
-            limit 25
             """
             result = session.run(query, keyword=keyword)
         else:
@@ -50,7 +49,6 @@ def fetch_graph_data(keyword=None):
                 MATCH (n)
                 OPTIONAL MATCH (n)-[r]->(m)
                 RETURN n, r, m
-                limit 25
             """)
         nodes = {}
         links = []
@@ -179,7 +177,26 @@ def get_timeline_data():
 # 大页面搜索
 @app.route('/search')
 def search_artifacts():
+    sort_dict = {
+        '时间：新-旧': 'order by entry_time desc',
+        '时间：旧-新': 'order by entry_time asc',
+        '名称：A-Z': 'order by name desc',
+        '名称：Z-A': 'order by name asc'
+    }
+    condition_dict = {
+        '作者': 'author',
+        '标题': 'name',
+        '描述': 'description',
+        '类型': 'type',
+        '朝代': 'dynasty',
+        '材料': 'matrials',
+        '尺寸': 'size',
+    }
+
     query = request.args.get('q', '').strip()
+    sort = request.args.get('sort', '').strip()
+    condition = request.args.get('condition', '').strip()
+    popular = request.args.getlist('popular')
 
     sql = """
             SELECT cr.relic_id, cr.name, cr.type, cr.description, cr.size, cr.matrials, 
@@ -188,17 +205,25 @@ def search_artifacts():
             FROM cultural_relic cr
             JOIN museum m ON cr.museum_id = m.museum_id
             LEFT JOIN relic_image ri ON cr.relic_id = ri.relic_id
-            WHERE cr.entry_time IS NOT NULL
         """
 
     # 动态拼接关键词搜索条件
-    if query:
-        sql += " AND cr.description LIKE %s"
+    if query and condition:
+        sql += " where cr." + condition_dict[condition] + " like %s"
+    elif query:
+        sql += (" where cr.name like %s or cr.description like %s or cr.size like %s or cr.matrials like"
+                " or cr.dynasty like %s or cr.author like %s or cr.entry_time like %s or m.museum_name like %s")
+
+    if sort:
+        sql += sort_dict[sort]
 
     try:
         with db.cursor() as cursor:
-            if query:
+            if query and condition:
                 cursor.execute(sql, ('%' + query + '%',))
+            elif query:
+                cursor.execute(sql, ('%' + query + '%', '%' + query + '%', '%' + query + '%', '%' + query + '%',
+                                     '%' + query + '%', '%' + query + '%', '%' + query + '%',))
             else:
                 cursor.execute(sql)
             rows = cursor.fetchall()
@@ -222,6 +247,7 @@ def search_artifacts():
                 "museum": row['museum_name'],
             })
 
+        # print(results)
         return jsonify({"results": results})
 
     except Exception as e:
@@ -232,14 +258,15 @@ def search_artifacts():
         if 'db' in locals():
             db.close()
 
-#页面图片
+
+# 页面图片
 @app.route('/api/detail_inform', methods=['GET'])
 def get_inform():
     relic_id = request.args.get('relic_id')
-    
+
     if not relic_id:
         return jsonify({'status': 'error', 'message': 'relic_id is required'}), 400
-    
+
     cursor = db.cursor()
     try:
         # 获取文物的图片URL
@@ -247,19 +274,19 @@ def get_inform():
         cursor.execute(sql, (relic_id,))
         result_img = cursor.fetchone()
         img_url = result_img['img_url'] if result_img else None
-        
+
         # 获取文物的详细信息
         sql = "SELECT * FROM cultural_relic WHERE relic_id = %s"
         cursor.execute(sql, (relic_id,))
         result = cursor.fetchone()
-        
+
         if not result:
             return jsonify({'status': 'error', 'message': 'No relic found with this ID'}), 404
-        
+
         name = result['name']
         author = result['author']
         dynasty = result['dynasty']
-        
+
         # 获取相关的文物数据并排除当前文物
         sql = "SELECT * FROM cultural_relic WHERE name LIKE %s AND relic_id != %s LIMIT 4"
         cursor.execute(sql, ('%' + name + '%', relic_id))
@@ -268,22 +295,24 @@ def get_inform():
         sql = "SELECT * FROM cultural_relic WHERE author LIKE %s AND relic_id != %s LIMIT 4"
         cursor.execute(sql, ('%' + author + '%', relic_id))
         authorlist = cursor.fetchall()
-        
+
         sql = "SELECT * FROM cultural_relic WHERE dynasty LIKE %s AND relic_id != %s LIMIT 4"
         cursor.execute(sql, ('%' + dynasty + '%', relic_id))
         dynastylist = cursor.fetchall()
-        
-        sql="SELECT ri.relic_id,ri.img_url,er.author,er.dynasty FROM relic_image ri JOIN cultural_relic er ON ri.relic_id=er.relic_id ORDER BY RAND() LIMIT 4"
+
+        sql = "SELECT ri.relic_id,ri.img_url,er.author,er.dynasty FROM relic_image ri JOIN cultural_relic er ON ri.relic_id=er.relic_id ORDER BY RAND() LIMIT 4"
         cursor.execute(sql)
-        rand_list=cursor.fetchall()
-        
+        rand_list = cursor.fetchall()
+
         # 合并所有的 relic_id
-        all_relic_ids = [relic['relic_id'] for relic in namelist] + [relic['relic_id'] for relic in authorlist] + [relic['relic_id'] for relic in dynastylist]
+        all_relic_ids = [relic['relic_id'] for relic in namelist] + [relic['relic_id'] for relic in authorlist] + [
+            relic['relic_id'] for relic in dynastylist]
 
         # 查询所有相关 relic_id 对应的图片 URL
         img_urls_dict = {}
         if all_relic_ids:
-            sql = "SELECT relic_id, img_url FROM relic_image WHERE relic_id IN (%s)" % ','.join(['%s'] * len(all_relic_ids))
+            sql = "SELECT relic_id, img_url FROM relic_image WHERE relic_id IN (%s)" % ','.join(
+                ['%s'] * len(all_relic_ids))
             cursor.execute(sql, tuple(all_relic_ids))
             img_urls = cursor.fetchall()
 
@@ -317,10 +346,10 @@ def get_inform():
             'img_url': img_url,
             'relic_id': relic_id,
             'relic_inform': result,
-            'namelist': combined_namelist,  
-            'authorlist': combined_authorlist,  
-            'dynastylist': combined_dynastylist,  
-            'rand_list':rand_list
+            'namelist': combined_namelist,
+            'authorlist': combined_authorlist,
+            'dynastylist': combined_dynastylist,
+            'rand_list': rand_list
         }), 200
 
     except Exception as e:
@@ -330,33 +359,35 @@ def get_inform():
             cursor.close()
 
 
-#提交浏览记录
-@app.route('/api/put_view/<relic_id>',methods=['PUT'])
+# 提交浏览记录
+@app.route('/api/put_view/<relic_id>', methods=['PUT'])
 def get_view(relic_id):
-    data=request.get_json()
+    data = request.get_json()
     print(data)
     if not data:
         return jsonify({'status': 'error', 'message': 'views_count is required'}), 400
-    views_count=data['views_count']
+    views_count = data['views_count']
     cursor = db.cursor()
     sql = "UPDATE cultural_relic SET views_count=%s  WHERE relic_id = %s"
-    cursor.execute(sql, (views_count,relic_id,))
+    cursor.execute(sql, (views_count, relic_id,))
     db.commit()
     return jsonify({'status': 'success', 'message': '提交浏览成功'})
 
-#收藏记录
-@app.route('/api/put_like/<relic_id>',methods=['PUT'])
+
+# 收藏记录
+@app.route('/api/put_like/<relic_id>', methods=['PUT'])
 def get_like(relic_id):
-    data=request.get_json()
+    data = request.get_json()
     print(data)
     if not data:
         return jsonify({'status': 'error', 'message': 'like_count is required'}), 400
-    likes_count=data['likes_count']
+    likes_count = data['likes_count']
     cursor = db.cursor()
     sql = "UPDATE cultural_relic SET likes_count=%s  WHERE relic_id = %s"
-    cursor.execute(sql, (likes_count,relic_id,))
+    cursor.execute(sql, (likes_count, relic_id,))
     db.commit()
     return jsonify({'status': 'success', 'message': '提交收藏成功'})
+
 
 if __name__ == "__main__":
     app.run(debug=True)

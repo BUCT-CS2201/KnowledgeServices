@@ -1,7 +1,20 @@
 <script setup>
-import {ref} from "vue";
+import {defineProps, ref} from "vue";
 
 const searchQuery = ref('')
+
+const props = defineProps({
+    len: Number,
+    onAddTag: Function
+})
+
+const submitSearchQuery = () => {
+    if (searchQuery.value.trim() !== '') {
+        // 搜索内容作为标签，标签内容可以自定义前缀，如 "搜索：xxx"
+        props.onAddTag('搜索：' + searchQuery.value.trim(), 'search')
+    }
+}
+
 </script>
 
 <template>
@@ -13,7 +26,7 @@ const searchQuery = ref('')
             <el-col :span="15" align="center">
                 <input style="height: 60px;width: 100%;font-size: xxx-large;margin-top: 10px;border: none;"
                        v-model="searchQuery"
-                       placeholder="文物搜索..." @keyup.enter="fetchArtifacts" clearable>
+                       placeholder="文物搜索..." @keyup.enter="submitSearchQuery" clearable>
             </el-col>
             <!--限制条件-->
             <el-col :span="2" align="center">
@@ -27,19 +40,20 @@ const searchQuery = ref('')
                     </span>
                     <template #dropdown>
                         <el-dropdown-menu>
-                            <el-dropdown-item>艺术家</el-dropdown-item>
-                            <el-dropdown-item>标题</el-dropdown-item>
-                            <el-dropdown-item>描述</el-dropdown-item>
-                            <el-dropdown-item>类型</el-dropdown-item>
-                            <el-dropdown-item>含视频</el-dropdown-item>
-                            <el-dropdown-item>朝代</el-dropdown-item>
+                            <el-dropdown-item @click="() => props.onAddTag('仅限作者')">作者</el-dropdown-item>
+                            <el-dropdown-item @click="() => props.onAddTag('仅限标题')">标题</el-dropdown-item>
+                            <el-dropdown-item @click="() => props.onAddTag('仅限描述')">描述</el-dropdown-item>
+                            <el-dropdown-item @click="() => props.onAddTag('仅限类型')">类型</el-dropdown-item>
+                            <el-dropdown-item @click="() => props.onAddTag('仅限朝代')">朝代</el-dropdown-item>
+                            <el-dropdown-item @click="() => props.onAddTag('仅限材料')">材料</el-dropdown-item>
+                            <el-dropdown-item @click="() => props.onAddTag('仅限尺寸')">尺寸</el-dropdown-item>
                         </el-dropdown-menu>
                     </template>
                 </el-dropdown>
             </el-col>
             <!--搜索按钮-->
             <el-col :span="3" align="center">
-                <el-button @click="$emit('search', searchQuery)"
+                <el-button @click="() => { submitSearchQuery(); $emit('search', searchQuery) }"
                            style="border-radius: var(--el-border-radius-small);background-color: black;width: 70%;
                                height: 70px;">
                     <el-icon style="color: white;font-size: 32px;">
@@ -55,7 +69,7 @@ const searchQuery = ref('')
 </template>
 
 <style scoped>
-input::placeholder{
+input::placeholder {
     font-family: "Georgia", "Times New Roman", Times, serif;
 }
 </style>
