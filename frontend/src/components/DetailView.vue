@@ -22,17 +22,17 @@
                         </li>
                         <li @click="updatelike" style="cursor:pointer;">
                             <h5>
-                                <el-icon>
-                                    <Pointer/>
-                                </el-icon>
-                                点赞 {{ likes_count }}
+                                <el-icon v-if="islike"><Sunrise /></el-icon>
+                                <el-icon v-else><Sunny /></el-icon>
+                                点赞{{ likes_count }}
                             </h5>
                         </li>
                         <li @click="updatefavorite" style="cursor:pointer;">
                             <h5>
-                                <el-icon>
+                                <el-icon v-if="isFav">
                                     <Star/>
                                 </el-icon>
+                                <el-icon v-else><StarFilled /></el-icon>
                                 收藏
                             </h5>
                         </li>
@@ -103,7 +103,8 @@
     <div class="reco">
         <div class="r-left">
             <div class="l-content">
-                <img :src="imageSrc" alt="">
+                <img :src="imageSrc" alt="" v-if="imageSrc">
+                <el-empty v-else description="无图片"/>
                 <!-- <h3>推荐组件</h3>
                 <p>???</p> -->
                 <div class="l-content">
@@ -122,11 +123,11 @@
             <!-- 判断是否有返回值 -->
             <h1 v-if="!(name_list.length===0 && author_list.length===0 && dynasty_list.length===0)">相关推荐</h1>
             <h1 v-else>随机推荐</h1>
-            <div class="theme">
+            <div class="theme" v-if="name_list.length>0">
                 <div class="title">
                     <h1>主题</h1>
                 </div>
-                <ul class="themeul" v-if="name_list.length>0">
+                <ul class="themeul">
                     <li v-for="item in name_list" :key="item.relic_id" @click="goto_next(item.relic_id)">
                         <div v-if="item.img_url">
                             <img :src="item.img_url" alt="relic image"/>
@@ -230,6 +231,11 @@ let dynasty_list = ref([])
 let views_count = ref(null)
 let likes_count = ref(null)
 let randlist = ref([])
+let museum_id=ref(null)
+//判断是否点赞
+let islike = ref(false)
+//判断是否收藏
+let isFav=ref(false)
 // 页面打开渲染图片
 // 父组件给子组件image_id
 //根据所给的image_id查找url，根据relic_id查找到详细信息
@@ -238,7 +244,8 @@ async function detailRender(id) {
         let relicData = await axios.get('http://localhost:5000/api/detail_inform', {
             params: {relic_id: id}
         })
-        const {img_url, relic_inform, namelist, authorlist, dynastylist, rand_list} = relicData.data
+        const { img_url, relic_inform, namelist, authorlist, dynastylist, rand_list,museum} = relicData.data
+        console.log(museum)
         imageSrc.value = img_url
         name_list.value = namelist
         console.log(name_list.value)
@@ -257,10 +264,29 @@ async function detailRender(id) {
         matrials.value = relic_inform.matrials
         type.value = relic_inform.type
         size.value = relic_inform.size
-        location.value = relic_inform.museum_id
+        location.value = museum.museum_name
+        museum_id.value=relic_inform.museum_id
+        console.log(location.value)
         description.value = relic_inform.description
         views_count.value = relic_inform.views_count
         likes_count.value = relic_inform.likes_count
+        const data = await axios.get('http://localhost:5000/api/get_thumsbup', {
+            params: { relic_id: id }
+    })
+        console.log(data.data.user_id)
+    //判断点赞
+    if (data.data.user_id===null) {
+        islike.value=true
+    } else {
+        islike.value=false
+        }
+        console.log(islike.value)
+        //判断收藏
+        if (data.data.user_favid === null) {
+        isFav.value=true
+        } else {
+        isFav.value=false
+    }
         //进入页面浏览+1
         axios.put(`http://localhost:5000/api/put_view/${id}`, {
             views_count: views_count.value + 1
@@ -280,10 +306,7 @@ async function detailRender(id) {
     }
 }
 
-onMounted(() => {
-    window.scrollTo(0, 0);
-    detailRender(id);
-})
+
 
 //监听id是否改变
 watch(() => route.params.id, (newvalue) => {
@@ -291,18 +314,39 @@ watch(() => route.params.id, (newvalue) => {
     detailRender(newvalue);
 })
 
-
+onMounted(() => {
+    window.scrollTo(0, 0);
+    detailRender(id);
+})
+// function isLike() {
+//     islike.value=!islike.value
+// }
 //点击点赞like+1
 function updatelike() {
-    likes_count.value += 1
+    if (islike.value) {
+        likes_count.value += 1
+        console.log('+1')
+    } else {
+        likes_count.value -= 1
+        console.log('-1')
+        console.log(likes_count.value)
+    }
     axios.put(`http://localhost:5000/api/put_like/${id}`, {
-        likes_count: likes_count.value
+        likes_count: likes_count.value,
+        user_id:sessionStorage.getItem('user_id'),
+        islike: islike.value,
     })
+    islike.value=!islike.value
 }
 
 //点击收藏
 function updatefavorite() {
-
+    axios.put(`http://localhost:5000/api/put_Fav/${id}`, {
+        user_id: sessionStorage.getItem('user_id'),
+        museum_id: museum_id.value,
+        isFav:isFav.value
+    })
+    isFav.value=!isFav.value
 }
 
 //放大
@@ -667,7 +711,6 @@ p {
     margin-top: 10px;
     display: flex;
     width: 100%;
-    justify-content: space-between;
     margin: 0;
     padding: 0;
 }
@@ -675,6 +718,8 @@ p {
 .r-right .themeul li, .r-right .authorul li, .r-right .dynastyul li {
     list-style: none;
     flex: 1 1 200px;
+    max-width:200px ;
+    margin-right: 20px;
 }
 
 .r-right .themeul li img, .r-right .authorul li img, .r-right .dynastyul li img {

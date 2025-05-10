@@ -108,7 +108,7 @@ def login():
     if result is None:
         return jsonify({'status': 'error', 'message': '用户不存在'}), 401
     if result['password'] == hashed_password:
-        return jsonify({'status': 'success', 'message': '登录成功', 'username': result['name']})
+        return jsonify({'status': 'success', 'message': '登录成功', 'username': result['name'], 'user_id':result['user_id']})
     else:
         return jsonify({'status': 'error', 'message': '密码错误'}), 401
 
@@ -279,6 +279,12 @@ def get_inform():
         sql = "SELECT * FROM cultural_relic WHERE relic_id = %s"
         cursor.execute(sql, (relic_id,))
         result = cursor.fetchone()
+        museum_id=result['museum_id']
+        print(museum_id)
+        sql = "SELECT * FROM museum WHERE museum_id = %s"
+        cursor.execute(sql, (museum_id,))
+        museum = cursor.fetchone()
+        print(museum)
 
         if not result:
             return jsonify({'status': 'error', 'message': 'No relic found with this ID'}), 404
@@ -332,7 +338,7 @@ def get_inform():
                     'author': relic['author'],
                     'dynasty': relic['dynasty'],
                     'description': relic['description'],
-                    'img_url': img_url
+                    'img_url': img_url,
                 })
             return combined_list
 
@@ -349,7 +355,8 @@ def get_inform():
             'namelist': combined_namelist,
             'authorlist': combined_authorlist,
             'dynastylist': combined_dynastylist,
-            'rand_list': rand_list
+            'rand_list': rand_list,
+            'museum':museum
         }), 200
 
     except Exception as e:
@@ -374,7 +381,7 @@ def get_view(relic_id):
     return jsonify({'status': 'success', 'message': '提交浏览成功'})
 
 
-# 收藏记录
+# 点赞记录
 @app.route('/api/put_like/<relic_id>', methods=['PUT'])
 def get_like(relic_id):
     data = request.get_json()
@@ -383,10 +390,52 @@ def get_like(relic_id):
         return jsonify({'status': 'error', 'message': 'like_count is required'}), 400
     likes_count = data['likes_count']
     cursor = db.cursor()
+    #提交点赞
     sql = "UPDATE cultural_relic SET likes_count=%s  WHERE relic_id = %s"
-    cursor.execute(sql, (likes_count, relic_id,))
+    cursor.execute(sql, (likes_count,relic_id,))
+    user_id=data['user_id']
+    islike=data['islike']
+    if islike:
+        sql="INSERT INTO relic_like(user_id,relic_id) VALUES (%s,%s)"
+        cursor.execute(sql,(user_id,relic_id))
+    else:
+        sql="DELETE FROM relic_like where relic_id=%s"
+        cursor.execute(sql,(relic_id,))
+    #提交收藏
+
     db.commit()
     return jsonify({'status': 'success', 'message': '提交收藏成功'})
+#获得点赞记录
+@app.route('/api/get_thumsbup',methods=['GET'])
+def get_thumbsup():
+    relic_id=request.args.get('relic_id')
+    print(relic_id)
+    cursor=db.cursor()
+    sql="SELECT user_id from relic_like where relic_id=%s"
+    cursor.execute(sql,(relic_id,))
+    user_id=cursor.fetchone()
+    sql="SELECT user_id from user_favorite where relic_id=%s"
+    cursor.execute(sql,(relic_id,))
+    user_favid=cursor.fetchone()
+    print(user_id)
+    return jsonify({"user_id": user_id,'user_favid':user_favid})
+   
+
+@app.route('/api/put_Fav/<Fav_id>',methods=['PUT'])
+def get_Fav(Fav_id):
+    data=request.get_json()
+    museum_id=data['museum_id']
+    relic_id=Fav_id
+    isFav=data['isFav']
+    user_id=data['user_id']
+    cursor=db.cursor()
+    if isFav:
+        sql="INSERT INTO user_favorite(user_id,relic_id,museum_id,favorite_type) VALUES (%s,%s,%s,1)"
+        cursor.execute(sql,(user_id,relic_id,museum_id))
+    else:
+        sql="DELETE FROM user_favorite where relic_id=%s"
+        cursor.execute(sql,(relic_id,))
+    return jsonify('提交成功')
 
 
 if __name__ == "__main__":
