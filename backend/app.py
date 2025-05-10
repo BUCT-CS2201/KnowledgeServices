@@ -178,11 +178,12 @@ def get_timeline_data():
 @app.route('/search')
 def search_artifacts():
     sort_dict = {
-        '时间：新-旧': 'order by entry_time desc',
-        '时间：旧-新': 'order by entry_time asc',
-        '名称：A-Z': 'order by name desc',
-        '名称：Z-A': 'order by name asc'
+        '时间：新-旧': ' ORDER BY cr.entry_time DESC',
+        '时间：旧-新': ' ORDER BY cr.entry_time ASC',
+        '名称：A-Z': ' ORDER BY cr.name ASC',
+        '名称：Z-A': ' ORDER BY cr.name DESC'
     }
+
     condition_dict = {
         '作者': 'author',
         '标题': 'name',
@@ -193,42 +194,67 @@ def search_artifacts():
         '尺寸': 'size',
     }
 
+    # popular 标签字典：返回元组 (SQL条件, 参数)，如果参数是 None，表示条件不需要占位符
+    popular_dict = {
+        '仰韶文化': ('cr.dynasty LIKE %s', '%仰韶文化%'),
+        '作者不详': ('cr.author = %s', '不明'),
+        '纸本水墨': ('cr.description LIKE %s', '%纸本水墨%'),
+        '山水': ('cr.description LIKE %s', '%山水%'),
+        '含视频': ('rv.video_url IS NOT NULL', None)
+    }
+
+    # 获取前端传参
     query = request.args.get('q', '').strip()
     sort = request.args.get('sort', '').strip()
     condition = request.args.get('condition', '').strip()
     popular = request.args.getlist('popular')
 
+    # 基础 SQL
     sql = """
-            SELECT cr.relic_id, cr.name, cr.type, cr.description, cr.size, cr.matrials, 
-                   cr.dynasty, cr.likes_count, cr.views_count, cr.author, cr.entry_time, 
-                   ri.img_url, m.museum_name
-            FROM cultural_relic cr
-            JOIN museum m ON cr.museum_id = m.museum_id
-            LEFT JOIN relic_image ri ON cr.relic_id = ri.relic_id
-        """
+        SELECT cr.relic_id, cr.name, cr.type, cr.description, cr.size, cr.matrials,
+               cr.dynasty, cr.likes_count, cr.views_count, cr.author, cr.entry_time,
+               ri.img_url, m.museum_name, rv.video_url
+        FROM cultural_relic cr
+        JOIN museum m ON cr.museum_id = m.museum_id
+        LEFT JOIN relic_image ri ON cr.relic_id = ri.relic_id
+        LEFT JOIN relic_video rv ON cr.relic_id = rv.relic_id AND rv.is_official = 1 AND rv.status = 1
+    """
 
-    # 动态拼接关键词搜索条件
+    where_clauses = []
+    params = []
+
+    # 搜索关键词
     if query and condition:
-        sql += " where cr." + condition_dict[condition] + " like %s"
+        where_clauses.append(f"cr.{condition_dict[condition]} LIKE %s")
+        params.append(f"%{query}%")
     elif query:
-        sql += (" where cr.name like %s or cr.description like %s or cr.size like %s or cr.matrials like"
-                " or cr.dynasty like %s or cr.author like %s or cr.entry_time like %s or m.museum_name like %s")
+        like_fields = ['cr.name', 'cr.description', 'cr.size', 'cr.matrials',
+                       'cr.dynasty', 'cr.author', 'cr.entry_time', 'm.museum_name']
+        or_conditions = " OR ".join([f"{field} LIKE %s" for field in like_fields])
+        where_clauses.append(f"({or_conditions})")
+        params.extend([f"%{query}%"] * len(like_fields))
 
-    if sort:
+    # popular 标签处理
+    for item in popular:
+        if item in popular_dict:
+            condition_sql, value = popular_dict[item]
+            where_clauses.append(condition_sql)
+            if value is not None:
+                params.append(value)
+
+    # 拼接 WHERE 子句
+    if where_clauses:
+        sql += " WHERE " + " AND ".join(where_clauses)
+
+    # 排序拼接
+    if sort in sort_dict:
         sql += sort_dict[sort]
 
     try:
         with db.cursor() as cursor:
-            if query and condition:
-                cursor.execute(sql, ('%' + query + '%',))
-            elif query:
-                cursor.execute(sql, ('%' + query + '%', '%' + query + '%', '%' + query + '%', '%' + query + '%',
-                                     '%' + query + '%', '%' + query + '%', '%' + query + '%',))
-            else:
-                cursor.execute(sql)
+            cursor.execute(sql, params)
             rows = cursor.fetchall()
 
-        # 构造前端需要的数据格式
         results = []
         for row in rows:
             results.append({
@@ -245,9 +271,9 @@ def search_artifacts():
                 "views_count": row['views_count'],
                 "author": row['author'],
                 "museum": row['museum_name'],
+                "video": row['video_url']
             })
 
-        # print(results)
         return jsonify({"results": results})
 
     except Exception as e:

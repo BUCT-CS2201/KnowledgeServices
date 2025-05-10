@@ -16,10 +16,7 @@
                             <ArrowUp/>
                         </el-icon>
                     </el-col>
-                    <el-col :span="17"></el-col>
-                    <el-col :span="2">
-                        <el-button round @click="addTag('带视频')">带视频</el-button>
-                    </el-col>
+                    <el-col :span="19"></el-col>
                     <!--高级搜索-->
                     <el-col :span="3" style="margin:auto 0;">
                         <el-link>高级搜索
@@ -31,9 +28,11 @@
                 </el-row>
                 <!--热门 静态按钮-->
                 <div v-if="isShowPop" style="margin-top: 10px">
-                    <el-button round @click="addTag('xixixixi')">xixixixi</el-button>
-                    <el-button round @click="addTag('123')">123</el-button>
-                    <el-button round @click="addTag('321')">321</el-button>
+                    <el-button round @click="addTag('仰韶文化')">仰韶文化</el-button>
+                    <el-button round @click="addTag('作者不详')">作者不详</el-button>
+                    <el-button round @click="addTag('纸本水墨')">纸本水墨</el-button>
+                    <el-button round @click="addTag('山水')">山水</el-button>
+                    <el-button round @click="addTag('含视频')">含视频</el-button>
                 </div>
             </div>
 
