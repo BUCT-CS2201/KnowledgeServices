@@ -1,11 +1,32 @@
 <template>
     <div class="detail">
         <div class="main">
-            <div class="left" ref="leftSide">
-                <div class="l-img">
-                    <img v-if="imageSrc" :src="imageSrc" :style="{ transform: `scale(${scale})` }" alt="">
+            <div class="left" ref="leftSide" @wheel.prevent="onWheel" @mousedown="startDrag" @mousemove="onDrag" @mouseup="endDrag" @mouseleave="endDrag">
+                <div class="l-img" ref="mainImg" :style="{ cursor: isDragging ? 'grabbing' : 'grab' }">
+                    <div class="image-container" ref="imageContainer">
+
+                    </div>
+                    <img v-if="imageSrc" :src="imageSrc" :style="imageStyle" alt="" ref="imgElement"
+                    @mousedown="startDrag"
+                    @mousemove="onDrag"
+                    @mouseup="endDrag"
+                    @mouseleave="endDrag">
                     <el-empty v-else description="无图片"/>
+                    <!-- 放大时的局部显示框 -->
+            <div v-if="scale > 1" class="zoom-rect" :style="zoomRectStyle"></div>
                 </div>
+                <!-- 缩略图预览框 -->
+                <div v-if="imageSrc" class="thumbnail-box">
+                    <div class="thumbnail" ref="thumbBox">
+                    <img :src="imageSrc" />
+                    <div
+                        class="view-rect"
+                        :style="thumbnailRectStyle"
+                        @mousedown.prevent.stop="startThumbDrag"
+                    ></div>
+                    </div>
+                </div>
+
                 <div class="bm" ref="leftBm">
                     <ul>
                         <li @click="zoomIn" style="cursor: pointer;">
@@ -218,7 +239,7 @@
 </template>
 
 <script setup name="DetailView">
-import {ref, onMounted, watch, nextTick} from 'vue'
+import {ref, onMounted, watch, nextTick,onUnmounted,computed} from 'vue'
 import axios from 'axios'
 import {ElMessage} from 'element-plus'
 import {useRoute, useRouter} from 'vue-router'
@@ -229,7 +250,6 @@ let id = route.params.id
 const router = useRouter()
 // 从 route.params 中获取动态参数 :id
 // 放大、缩小功能
-let scale = ref(1.0)
 let imageSrc = ref('')
 let create_time = ref('')
 let name = ref('')
@@ -378,20 +398,123 @@ function updatefavorite() {
 }
 
 //放大
-function zoomIn() {
-    if (scale.value <= 3) {
-        scale.value += 0.2
-        console.log(scale.value)
-    }
-}
+// function zoomIn() {
+//     if (scale.value <= 3) {
+//         scale.value += 0.2
+//         console.log(scale.value)
+//     }
+// }
 
 //缩小
-function zoomOut() {
-    if (scale.value > 1) {
-        scale.value -= 0.2
-    }
+// function zoomOut() {
+//     if (scale.value > 1) {
+//         scale.value -= 0.2
+//     }
+// }
+const scale = ref(1)
+const posX = ref(0)
+const posY = ref(0)
+const isDragging = ref(false)
+const dragStart = ref({ x: 0, y: 0 })
+const isThumbDragging = ref(false)
+const thumbStart = ref({ x: 0, y: 0 })
+const imgElement = ref(null);
+const mainImg = ref(null);
+const thumbBox = ref(null);
+const imageStyle = computed(() => ({
+  transform: `scale(${scale.value}) translate(${posX.value}px, ${posY.value}px)`
+}))
+const thumbnailRectStyle = computed(() => {
+  const thumbWidth = 100 / scale.value;
+  const thumbHeight = 100 / scale.value;
+  const thumbLeft = (-posX.value / (scale.value * (imgElement.value?.clientWidth || 1))) * 100;
+  const thumbTop = (-posY.value / (scale.value * (imgElement.value?.clientHeight || 1))) * 100;
+
+  return {
+    width: `${thumbWidth}%`,
+    height: `${thumbHeight}%`,
+    left: `${thumbLeft}%`,
+    top: `${thumbTop}%`,
+    cursor: 'move',
+  };
+});
+const zoomIn = () => {
+  scale.value = Math.min(scale.value + 0.1, 5)
+}
+const zoomOut = () => {
+  scale.value = Math.max(scale.value - 0.1, 0.5)
 }
 
+const startDrag = (event) => {
+  isDragging.value = true;
+  dragStart.value = { x: event.clientX, y: event.clientY };
+};
+
+const onWheel = (event) => {
+  const delta = event.deltaY
+  if (delta < 0) {
+    zoomIn()
+  } else {
+    zoomOut()
+  }
+}
+
+const onDrag = (event) => {
+  if (!isDragging.value) return
+  posX.value += (event.clientX - dragStart.value.x) / scale.value
+  posY.value += (event.clientY - dragStart.value.y) / scale.value
+  dragStart.value = { x: event.clientX, y: event.clientY }
+}
+const endDrag = () => {
+  isDragging.value = false
+}
+const startThumbDrag = (event) => {
+  isThumbDragging.value = true
+  thumbStart.value = { x: event.clientX, y: event.clientY }
+  document.addEventListener('mousemove', onThumbDrag)
+  document.addEventListener('mouseup', endThumbDrag)
+}
+const onThumbDrag = (event) => {
+  if (!isThumbDragging.value) return;
+
+  const thumbBoxRect = thumbBox.value.getBoundingClientRect();
+  const thumbWidth = thumbBoxRect.width;
+  const thumbHeight = thumbBoxRect.height;
+
+  const deltaX = event.clientX - thumbStart.value.x;
+  const deltaY = event.clientY - thumbStart.value.y;
+
+  const imgWidth = imgElement.value?.clientWidth || 1;
+  const imgHeight = imgElement.value?.clientHeight || 1;
+
+  posX.value -= (deltaX / thumbWidth) * imgWidth * scale.value;
+  posY.value -= (deltaY / thumbHeight) * imgHeight * scale.value;
+
+  thumbStart.value = { x: event.clientX, y: event.clientY };
+};
+const endThumbDrag = () => {
+  isThumbDragging.value = false
+  document.removeEventListener('mousemove', onThumbDrag)
+  document.removeEventListener('mouseup', endThumbDrag)
+}
+onUnmounted(() => {
+  // 清理监听
+  document.removeEventListener('mousemove', onThumbDrag)
+  document.removeEventListener('mouseup', endThumbDrag)
+})
+// 边界限制
+watch([posX, posY, scale], () => {
+  const imgWidth = imgElement.value?.clientWidth || 0;
+  const imgHeight = imgElement.value?.clientHeight || 0;
+  const containerWidth = mainImg.value?.clientWidth || 0;
+  const containerHeight = mainImg.value?.clientHeight || 0;
+
+  const maxX = Math.max(0, (imgWidth * scale.value - containerWidth) / 2);
+  const maxY = Math.max(0, (imgHeight * scale.value - containerHeight) / 2);
+
+  posX.value = Math.max(-maxX, Math.min(maxX, posX.value));
+  posY.value = Math.max(-maxY, Math.min(maxY, posY.value));
+}, { immediate: true });
 //下载
 // 实现 Download 功能
 function download() {
@@ -543,7 +666,37 @@ function goto_next(id) {
     width: 80%;
     height: 100%;
     object-fit: cover;
+    user-select: none;
     transition: transform 0.3s ease;
+}
+.thumbnail-box {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 120px;
+  height: 120px;
+  border: 1px solid #ccc;
+  background: #fff;
+  z-index: 100;
+}
+
+.thumbnail {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.view-rect {
+  position: absolute;
+  border: 2px solid red;
+  cursor: move;
 }
 
 .left .bm {
