@@ -85,6 +85,7 @@ const login = async () => {
             // 保存到 sessionStorage
             sessionStorage.setItem('isLoggedIn', 'true');
             sessionStorage.setItem('username', data.username);
+            sessionStorage.setItem('user_id', data.user_id);
             isLoggedIn.value = true; // 更新前端响应式变量
             //弹出消息
             ElMessage({
