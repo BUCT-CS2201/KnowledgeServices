@@ -120,6 +120,22 @@
             </div>
         </div>
         <div class="r-right">
+            <!-- 视频 -->
+            <div class="box_video" v-if="isVideo">
+                <h1>视频</h1>
+                <ul class="videoul">
+                    <li v-for="item in videoData" :key="item.video_id">
+                        <div v-if="item.video_url!==null">
+                            <video :src="item.video_url" controls></video>
+                        </div>
+                        <el-empty v-else description="没有视频"/>
+                        <div>
+                            <h3>{{ item.title }}</h3>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+            
             <!-- 判断是否有返回值 -->
             <h1 v-if="!(name_list.length===0 && author_list.length===0 && dynasty_list.length===0)">相关推荐</h1>
             <h1 v-else>随机推荐</h1>
@@ -231,7 +247,9 @@ let dynasty_list = ref([])
 let views_count = ref(null)
 let likes_count = ref(null)
 let randlist = ref([])
-let museum_id=ref(null)
+let museum_id = ref(null)
+let videoData=ref('')
+let isVideo=ref(false)
 //判断是否点赞
 let islike = ref(false)
 //判断是否收藏
@@ -244,7 +262,7 @@ async function detailRender(id) {
         let relicData = await axios.get('http://localhost:5000/api/detail_inform', {
             params: {relic_id: id}
         })
-        const { img_url, relic_inform, namelist, authorlist, dynastylist, rand_list,museum} = relicData.data
+        const { img_url, relic_inform, namelist, authorlist, dynastylist, rand_list,museum,video_data} = relicData.data
         console.log(museum)
         imageSrc.value = img_url
         name_list.value = namelist
@@ -270,6 +288,16 @@ async function detailRender(id) {
         description.value = relic_inform.description
         views_count.value = relic_inform.views_count
         likes_count.value = relic_inform.likes_count
+        videoData.value = video_data
+        console.log(videoData.value.video_url)
+        console.log(videoData.value.type)
+        if (videoData.value) {
+            isVideo.value=true
+        }
+        else {
+            isVideo.value=false
+        }
+        
         const data = await axios.get('http://localhost:5000/api/get_thumsbup', {
             params: { relic_id: id }
     })
@@ -727,7 +755,20 @@ p {
     height: auto;
     object-fit: cover;
 }
+.r-right .videoul li{
+    list-style: none;
+    flex: 1 1 200px;
+    max-width: 400px;
+    margin-right: 20px;
+}
+.r-right .videoul li video{
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+    height: 400px;
+}
 
+.r-right .box_video,
 .r-right .theme,
 .r-right .author,
 .r-right .dynasty {

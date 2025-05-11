@@ -269,6 +269,10 @@ def get_inform():
 
     cursor = db.cursor()
     try:
+        #获取文物有关视频
+        sql="SELECT * FROM relic_video where relic_id=%s LIMIT 4"
+        cursor.execute(sql,(relic_id,))
+        videoData=cursor.fetchall()
         # 获取文物的图片URL
         sql = "SELECT * FROM relic_image WHERE relic_id = %s"
         cursor.execute(sql, (relic_id,))
@@ -356,7 +360,8 @@ def get_inform():
             'authorlist': combined_authorlist,
             'dynastylist': combined_dynastylist,
             'rand_list': rand_list,
-            'museum':museum
+            'museum':museum,
+            'video_data':videoData
         }), 200
 
     except Exception as e:
@@ -420,7 +425,7 @@ def get_thumbsup():
     print(user_id)
     return jsonify({"user_id": user_id,'user_favid':user_favid})
    
-
+#获得收藏记录
 @app.route('/api/put_Fav/<Fav_id>',methods=['PUT'])
 def get_Fav(Fav_id):
     data=request.get_json()
@@ -436,7 +441,6 @@ def get_Fav(Fav_id):
         sql="DELETE FROM user_favorite where relic_id=%s"
         cursor.execute(sql,(relic_id,))
     return jsonify('提交成功')
-
 
 if __name__ == "__main__":
     app.run(debug=True)
