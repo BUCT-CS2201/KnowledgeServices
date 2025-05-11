@@ -42,6 +42,7 @@ def fetch_graph_data(keyword=None):
             WHERE any(prop IN keys(n) WHERE toString(n[prop]) CONTAINS $keyword)
             OPTIONAL MATCH (n)-[r]->(m)
             RETURN n, r, m
+            limit 300
             """
             result = session.run(query, keyword=keyword)
         else:
@@ -49,6 +50,7 @@ def fetch_graph_data(keyword=None):
                 MATCH (n)
                 OPTIONAL MATCH (n)-[r]->(m)
                 RETURN n, r, m
+                limit 300
             """)
         nodes = {}
         links = []
@@ -194,7 +196,6 @@ def search_artifacts():
         '尺寸': 'size',
     }
 
-    # popular 标签字典：返回元组 (SQL条件, 参数)，如果参数是 None，表示条件不需要占位符
     popular_dict = {
         '仰韶文化': ('cr.dynasty LIKE %s', '%仰韶文化%'),
         '作者不详': ('cr.author = %s', '不明'),
@@ -203,13 +204,22 @@ def search_artifacts():
         '含视频': ('rv.video_url IS NOT NULL', None)
     }
 
-    # 获取前端传参
+    # 获取参数
     query = request.args.get('q', '').strip()
     sort = request.args.get('sort', '').strip()
     condition = request.args.get('condition', '').strip()
     popular = request.args.getlist('popular')
 
-    # 基础 SQL
+    # 高级搜索字段
+    author = request.args.get('author')
+    name = request.args.get('name')
+    museum = request.args.get('museum')
+    dynasty = request.args.get('dynasty')
+    matrials = request.args.get('matrials')
+    after = request.args.get('after')
+    before = request.args.get('before')
+    type_ = request.args.get('type')
+
     sql = """
         SELECT cr.relic_id, cr.name, cr.type, cr.description, cr.size, cr.matrials,
                cr.dynasty, cr.likes_count, cr.views_count, cr.author, cr.entry_time,
@@ -223,7 +233,7 @@ def search_artifacts():
     where_clauses = []
     params = []
 
-    # 搜索关键词
+    # 模糊搜索
     if query and condition:
         where_clauses.append(f"cr.{condition_dict[condition]} LIKE %s")
         params.append(f"%{query}%")
@@ -234,7 +244,43 @@ def search_artifacts():
         where_clauses.append(f"({or_conditions})")
         params.extend([f"%{query}%"] * len(like_fields))
 
-    # popular 标签处理
+    # 高级搜索字段拼接
+    if author:
+        where_clauses.append("cr.author LIKE %s")
+        params.append(f"%{author}%")
+
+    if name:
+        where_clauses.append("cr.name LIKE %s")
+        params.append(f"%{name}%")
+
+    if museum:
+        where_clauses.append("m.museum_name LIKE %s")
+        params.append(f"%{museum}%")
+
+    if dynasty:
+        where_clauses.append("cr.dynasty LIKE %s")
+        params.append(f"%{dynasty}%")
+
+    if matrials:
+        where_clauses.append("cr.matrials LIKE %s")
+        params.append(f"%{matrials}%")
+
+    if type_:
+        where_clauses.append("cr.type LIKE %s")
+        params.append(f"%{type_}%")
+
+    # 时间范围筛选
+    if after and before:
+        where_clauses.append("cr.entry_time BETWEEN %s AND %s")
+        params.extend([after, before])
+    elif after:
+        where_clauses.append("cr.entry_time >= %s")
+        params.append(after)
+    elif before:
+        where_clauses.append("cr.entry_time <= %s")
+        params.append(before)
+
+    # popular 标签
     for item in popular:
         if item in popular_dict:
             condition_sql, value = popular_dict[item]
@@ -246,9 +292,11 @@ def search_artifacts():
     if where_clauses:
         sql += " WHERE " + " AND ".join(where_clauses)
 
-    # 排序拼接
+    # 排序
     if sort in sort_dict:
         sql += sort_dict[sort]
+
+    print(f"sql: {sql}", f"params: {params}")
 
     try:
         with db.cursor() as cursor:
@@ -271,7 +319,6 @@ def search_artifacts():
                 "views_count": row['views_count'],
                 "author": row['author'],
                 "museum": row['museum_name'],
-                "video": row['video_url']
             })
 
         return jsonify({"results": results})

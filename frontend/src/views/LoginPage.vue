@@ -35,10 +35,10 @@
                         </el-form-item>
                     </el-form>
                     <div style="text-align: center;margin-top: 30px;">
-                        <el-button color="black" :dark="isDark" @click="login"
+                        <el-button color="black" @click="login"
                                    style="border-radius: var(--el-border-radius-small);width: 150px;height: 40px;">登录
                         </el-button>
-                        <el-button color="black" :dark="isDark" @click="resetForm"
+                        <el-button color="black" @click="resetForm"
                                    style="border-radius: var(--el-border-radius-small);width: 150px;height: 40px;margin-left: 30px"
                                    plain>清空
                         </el-button>
