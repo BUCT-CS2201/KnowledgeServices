@@ -16,13 +16,10 @@
                             <ArrowUp/>
                         </el-icon>
                     </el-col>
-                    <el-col :span="17"></el-col>
-                    <el-col :span="2">
-                        <el-button round @click="addTag('带视频')">带视频</el-button>
-                    </el-col>
+                    <el-col :span="19"></el-col>
                     <!--高级搜索-->
                     <el-col :span="3" style="margin:auto 0;">
-                        <el-link>高级搜索
+                        <el-link @click="dialogVisible = true">高级搜索
                             <el-icon class="el-icon--right">
                                 <Setting/>
                             </el-icon>
@@ -31,18 +28,24 @@
                 </el-row>
                 <!--热门 静态按钮-->
                 <div v-if="isShowPop" style="margin-top: 10px">
-                    <el-button round @click="addTag('xixixixi')">xixixixi</el-button>
-                    <el-button round @click="addTag('123')">123</el-button>
-                    <el-button round @click="addTag('321')">321</el-button>
+                    <el-button round @click="addTag('仰韶文化')" color="black" size="small">仰韶文化</el-button>
+                    <el-button round @click="addTag('作者不详')" color="black" size="small">作者不详</el-button>
+                    <el-button round @click="addTag('纸本水墨')" color="black" size="small">纸本水墨</el-button>
+                    <el-button round @click="addTag('山水')" color="black" size="small">山水</el-button>
+                    <el-button round @click="addTag('含视频')" color="black" size="small">含视频</el-button>
                 </div>
             </div>
 
             <!--搜索标签-->
             <div class="tags" style="margin: 10px auto;">
                 <el-tag v-for="(tag,index) in selectedTags" :key="index" round closable size="large"
-                        @close="removeTag(tag)" style="margin: 5px">{{ tag }}
+                        @close="removeTag(tag)" style="margin: 5px" color="pink" type="danger">{{ tag }}
                 </el-tag>
+                <el-link v-if="selectedTags.length > 0" style="margin-left: 5px" @click="reset()">重置</el-link>
             </div>
+
+            <SearchModal v-if="dialogVisible" @addTags="handleAddTags" @close="dialogVisible = false">
+            </SearchModal>
 
             <!--grid/table切换栏-->
             <GridTable :len="artifacts.length" ref="GridTableRef" :onAddTag="addTag"></GridTable>
@@ -85,6 +88,7 @@ import ArtifactTable from "@/components/ArtifactTable.vue";
 import GridTable from "@/components/GridTable.vue";
 import {ElMessage} from "element-plus";
 import qs from 'qs';
+import SearchModal from "@/components/SearchModal.vue";
 
 const searchQuery = ref('')
 const artifacts = ref([])
@@ -92,6 +96,7 @@ const searched = ref(false)
 const GridTableRef = ref(true)
 const isShowPop = ref(false)
 const selectedTags = ref([])
+const dialogVisible = ref(false)
 
 //控制栅格/表格展示
 const isgrid = computed(() => {
@@ -116,7 +121,7 @@ onMounted(() => {
 //获取文物信息
 const fetchArtifacts = async () => {
     searched.value = true
-
+    //普通搜索
     const sortOptions = ['时间：新-旧', '时间：旧-新', '名称：A-Z', '名称：Z-A']
     const conditionOptions = ['仅限作者', '仅限标题', '仅限描述', '仅限类型', '仅限朝代', '仅限材料', '仅限尺寸']
 
@@ -124,9 +129,18 @@ const fetchArtifacts = async () => {
         q: '',
         sort: '',
         condition: '',
+        author: '',
+        name: '',
+        museum: '',
+        after: '',
+        before: '',
+        type: '',
+        dynasty: '',
+        matrials: '',
         popular: [],
     }
 
+    //处理普通搜索标签
     for (const tag of selectedTags.value) {
         if (sortOptions.includes(tag)) {
             queryParams.sort = tag
@@ -134,11 +148,33 @@ const fetchArtifacts = async () => {
             queryParams.condition = tag.replace('仅限', '')
         } else if (tag.startsWith('搜索：')) {
             queryParams.q = tag.replace('搜索：', '')
+            //处理高级搜索标签
+        } else if (tag.startsWith('作者：')) {
+            queryParams.author = tag.replace('作者：', '')
+        } else if (tag.startsWith('名称：')) {
+            queryParams.name = tag.replace('名称：', '')
+        } else if (tag.startsWith('博物馆：')) {
+            queryParams.museum = tag.replace('博物馆：', '')
+        } else if (tag.startsWith('类型：')) {
+            queryParams.type = tag.replace('类型：', '')
+        } else if (tag.startsWith('材料：')) {
+            queryParams.matrials = tag.replace('材料：', '')
+        } else if (tag.startsWith('朝代：')) {
+            queryParams.dynasty = tag.replace('朝代：', '')
+        } else if (tag.startsWith('之后：')) {
+            let time = tag.replace('之后：', '')
+            if (time.startsWith('CE')) time = time.replace('CE', '')
+            else time = '-' + time.replace('BCE', '')
+            queryParams.after = time
+        } else if (tag.startsWith('以前：')) {
+            let time = tag.replace('以前：', '')
+            if (time.startsWith('CE')) time = time.replace('CE', '')
+            else time = '-' + time.replace('BCE', '')
+            queryParams.before = time
         } else {
             queryParams.popular.push(tag)
         }
     }
-    console.log(queryParams)
 
     try {
         const response = await axios.get('http://localhost:5000/search', {
@@ -176,27 +212,39 @@ const switchShowPopular = () => {
 }
 
 // 添加标签（去重）
-function addTag(tag) {
+function addTag(tag, suppressFetch = false) {
     //排序互斥\限制条件互斥
     const sortOptions = ['时间：新-旧', '时间：旧-新', '名称：A-Z', '名称：Z-A']
     const conditionOptions = ['仅限艺术家', '仅限标题', '仅限描述', '仅限类型', '仅限朝代']
+    const uniquePrefixes = ['作者：', '名称：', '博物馆：', '类型：', '材料：', '朝代：', '之后：', '以前：']
+
     const isSortTag = sortOptions.includes(tag)
     const isConditionTag = conditionOptions.includes(tag)
     const isSearchTag = tag.startsWith('搜索：')
+
     if (isSortTag) {
         // 删除已有的排序标签
         selectedTags.value = selectedTags.value.filter(t => !sortOptions.includes(t))
     } else if (isConditionTag) {
-        // 删除已有的排序标签
+        // 删除已有的条件标签
         selectedTags.value = selectedTags.value.filter(t => !conditionOptions.includes(t))
     } else if (isSearchTag) {
         selectedTags.value = selectedTags.value.filter(t => !t.startsWith('搜索：'))
+    } else {
+        for (const prefix of uniquePrefixes) {
+            if (tag.startsWith(prefix)) {
+                selectedTags.value = selectedTags.value.filter(t => !t.startsWith(prefix))
+                break
+            }
+        }
     }
     //去重
     if (!selectedTags.value.includes(tag)) {
         selectedTags.value.push(tag)
     }
-    fetchArtifacts();
+    if (!suppressFetch) {
+        fetchArtifacts();
+    }
 }
 
 // 移除标签
@@ -204,6 +252,17 @@ function removeTag(tag) {
     selectedTags.value = selectedTags.value.filter(t => t !== tag);
     fetchArtifacts();
 }
+
+function reset() {
+    selectedTags.value = [];
+    fetchArtifacts();
+}
+
+function handleAddTags(tags) {
+    tags.forEach(tag => addTag(tag, true))
+    fetchArtifacts()
+}
+
 </script>
 
 <style scoped>
@@ -229,4 +288,10 @@ function removeTag(tag) {
     width: 80%;
     padding: 10px 25px;
 }
+
+.el-tag {
+    color: black;
+    border-color: black;
+}
+
 </style>

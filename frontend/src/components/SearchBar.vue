@@ -69,7 +69,13 @@ const submitSearchQuery = () => {
 </template>
 
 <style scoped>
+/*搜索字体调整*/
 input::placeholder {
     font-family: "Georgia", "Times New Roman", Times, serif;
+}
+
+/*取消选中黑框*/
+input:focus {
+    outline: none;
 }
 </style>

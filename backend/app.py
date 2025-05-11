@@ -42,6 +42,7 @@ def fetch_graph_data(keyword=None):
             WHERE any(prop IN keys(n) WHERE toString(n[prop]) CONTAINS $keyword)
             OPTIONAL MATCH (n)-[r]->(m)
             RETURN n, r, m
+            limit 300
             """
             result = session.run(query, keyword=keyword)
         else:
@@ -49,6 +50,7 @@ def fetch_graph_data(keyword=None):
                 MATCH (n)
                 OPTIONAL MATCH (n)-[r]->(m)
                 RETURN n, r, m
+                limit 300
             """)
         nodes = {}
         links = []
@@ -178,11 +180,12 @@ def get_timeline_data():
 @app.route('/search')
 def search_artifacts():
     sort_dict = {
-        '时间：新-旧': 'order by entry_time desc',
-        '时间：旧-新': 'order by entry_time asc',
-        '名称：A-Z': 'order by name desc',
-        '名称：Z-A': 'order by name asc'
+        '时间：新-旧': ' ORDER BY cr.entry_time DESC',
+        '时间：旧-新': ' ORDER BY cr.entry_time ASC',
+        '名称：A-Z': ' ORDER BY cr.name ASC',
+        '名称：Z-A': ' ORDER BY cr.name DESC'
     }
+
     condition_dict = {
         '作者': 'author',
         '标题': 'name',
@@ -193,42 +196,113 @@ def search_artifacts():
         '尺寸': 'size',
     }
 
+    popular_dict = {
+        '仰韶文化': ('cr.dynasty LIKE %s', '%仰韶文化%'),
+        '作者不详': ('cr.author = %s', '不明'),
+        '纸本水墨': ('cr.description LIKE %s', '%纸本水墨%'),
+        '山水': ('cr.description LIKE %s', '%山水%'),
+        '含视频': ('rv.video_url IS NOT NULL', None)
+    }
+
+    # 获取参数
     query = request.args.get('q', '').strip()
     sort = request.args.get('sort', '').strip()
     condition = request.args.get('condition', '').strip()
     popular = request.args.getlist('popular')
 
+    # 高级搜索字段
+    author = request.args.get('author')
+    name = request.args.get('name')
+    museum = request.args.get('museum')
+    dynasty = request.args.get('dynasty')
+    matrials = request.args.get('matrials')
+    after = request.args.get('after')
+    before = request.args.get('before')
+    type_ = request.args.get('type')
+
     sql = """
-            SELECT cr.relic_id, cr.name, cr.type, cr.description, cr.size, cr.matrials, 
-                   cr.dynasty, cr.likes_count, cr.views_count, cr.author, cr.entry_time, 
-                   ri.img_url, m.museum_name
-            FROM cultural_relic cr
-            JOIN museum m ON cr.museum_id = m.museum_id
-            LEFT JOIN relic_image ri ON cr.relic_id = ri.relic_id
-        """
+        SELECT cr.relic_id, cr.name, cr.type, cr.description, cr.size, cr.matrials,
+               cr.dynasty, cr.likes_count, cr.views_count, cr.author, cr.entry_time,
+               ri.img_url, m.museum_name, rv.video_url
+        FROM cultural_relic cr
+        JOIN museum m ON cr.museum_id = m.museum_id
+        LEFT JOIN relic_image ri ON cr.relic_id = ri.relic_id
+        LEFT JOIN relic_video rv ON cr.relic_id = rv.relic_id AND rv.is_official = 1 AND rv.status = 1
+    """
 
-    # 动态拼接关键词搜索条件
+    where_clauses = []
+    params = []
+
+    # 模糊搜索
     if query and condition:
-        sql += " where cr." + condition_dict[condition] + " like %s"
+        where_clauses.append(f"cr.{condition_dict[condition]} LIKE %s")
+        params.append(f"%{query}%")
     elif query:
-        sql += (" where cr.name like %s or cr.description like %s or cr.size like %s or cr.matrials like"
-                " or cr.dynasty like %s or cr.author like %s or cr.entry_time like %s or m.museum_name like %s")
+        like_fields = ['cr.name', 'cr.description', 'cr.size', 'cr.matrials',
+                       'cr.dynasty', 'cr.author', 'cr.entry_time', 'm.museum_name']
+        or_conditions = " OR ".join([f"{field} LIKE %s" for field in like_fields])
+        where_clauses.append(f"({or_conditions})")
+        params.extend([f"%{query}%"] * len(like_fields))
 
-    if sort:
+    # 高级搜索字段拼接
+    if author:
+        where_clauses.append("cr.author LIKE %s")
+        params.append(f"%{author}%")
+
+    if name:
+        where_clauses.append("cr.name LIKE %s")
+        params.append(f"%{name}%")
+
+    if museum:
+        where_clauses.append("m.museum_name LIKE %s")
+        params.append(f"%{museum}%")
+
+    if dynasty:
+        where_clauses.append("cr.dynasty LIKE %s")
+        params.append(f"%{dynasty}%")
+
+    if matrials:
+        where_clauses.append("cr.matrials LIKE %s")
+        params.append(f"%{matrials}%")
+
+    if type_:
+        where_clauses.append("cr.type LIKE %s")
+        params.append(f"%{type_}%")
+
+    # 时间范围筛选
+    if after and before:
+        where_clauses.append("cr.entry_time BETWEEN %s AND %s")
+        params.extend([after, before])
+    elif after:
+        where_clauses.append("cr.entry_time >= %s")
+        params.append(after)
+    elif before:
+        where_clauses.append("cr.entry_time <= %s")
+        params.append(before)
+
+    # popular 标签
+    for item in popular:
+        if item in popular_dict:
+            condition_sql, value = popular_dict[item]
+            where_clauses.append(condition_sql)
+            if value is not None:
+                params.append(value)
+
+    # 拼接 WHERE 子句
+    if where_clauses:
+        sql += " WHERE " + " AND ".join(where_clauses)
+
+    # 排序
+    if sort in sort_dict:
         sql += sort_dict[sort]
+
+    print(f"sql: {sql}", f"params: {params}")
 
     try:
         with db.cursor() as cursor:
-            if query and condition:
-                cursor.execute(sql, ('%' + query + '%',))
-            elif query:
-                cursor.execute(sql, ('%' + query + '%', '%' + query + '%', '%' + query + '%', '%' + query + '%',
-                                     '%' + query + '%', '%' + query + '%', '%' + query + '%',))
-            else:
-                cursor.execute(sql)
+            cursor.execute(sql, params)
             rows = cursor.fetchall()
 
-        # 构造前端需要的数据格式
         results = []
         for row in rows:
             results.append({
@@ -247,7 +321,6 @@ def search_artifacts():
                 "museum": row['museum_name'],
             })
 
-        # print(results)
         return jsonify({"results": results})
 
     except Exception as e:
