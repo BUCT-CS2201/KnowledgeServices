@@ -21,7 +21,7 @@ driver = GraphDatabase.driver("bolt://127.0.0.1:7687", auth=("neo4j", "your_own_
 db = pymysql.connect(
     host='localhost',
     user='root',
-    password='your_own_password',
+    password='root123',
     database='cultural_relics',
     charset='utf8mb4',
     cursorclass=pymysql.cursors.DictCursor

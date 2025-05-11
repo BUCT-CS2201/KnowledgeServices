@@ -425,17 +425,35 @@ const imageStyle = computed(() => ({
   transform: `scale(${scale.value}) translate(${posX.value}px, ${posY.value}px)`
 }))
 const thumbnailRectStyle = computed(() => {
-  const thumbWidth = 100 / scale.value;
-  const thumbHeight = 100 / scale.value;
-  const thumbLeft = (-posX.value / (scale.value * (imgElement.value?.clientWidth || 1))) * 100;
-  const thumbTop = (-posY.value / (scale.value * (imgElement.value?.clientHeight || 1))) * 100;
+  if (!imgElement.value || !thumbBox.value) {
+    return {};
+  }
+
+  const imgWidth = imgElement.value.clientWidth;
+  const imgHeight = imgElement.value.clientHeight;
+  const thumbWidth = thumbBox.value.clientWidth;
+  const thumbHeight = thumbBox.value.clientHeight;
+
+  // 计算红框的大小（缩略图上的可视区域）
+  const rectWidth = (thumbWidth / scale.value);
+  const rectHeight = (thumbHeight / scale.value);
+
+  // 计算红框的位置（映射 posX 和 posY 到缩略图坐标系）
+  // 大图的偏移量 (posX, posY) 是相对于其原始尺寸的，缩略图需要按比例映射
+  let rectLeft = (-posX.value / imgWidth) * thumbWidth;
+  let rectTop = (-posY.value / imgHeight) * thumbHeight;
+
+  // 边界检查：确保红框不会超出缩略图
+  rectLeft = Math.max(0, Math.min(thumbWidth - rectWidth, rectLeft));
+  rectTop = Math.max(0, Math.min(thumbHeight - rectHeight, rectTop));
 
   return {
-    width: `${thumbWidth}%`,
-    height: `${thumbHeight}%`,
-    left: `${thumbLeft}%`,
-    top: `${thumbTop}%`,
-    cursor: 'move',
+    width: `${rectWidth}px`,
+    height: `${rectHeight}px`,
+    left: `${rectLeft}px`,
+    top: `${rectTop}px`,
+    border: '2px solid red',
+    position: 'absolute',
   };
 });
 const zoomIn = () => {
@@ -475,21 +493,29 @@ const startThumbDrag = (event) => {
   document.addEventListener('mouseup', endThumbDrag)
 }
 const onThumbDrag = (event) => {
-  if (!isThumbDragging.value) return;
+  if (!isThumbDragging.value || !imgElement.value || !thumbBox.value) return;
 
   const thumbBoxRect = thumbBox.value.getBoundingClientRect();
-  const thumbWidth = thumbBoxRect.width;
-  const thumbHeight = thumbBoxRect.height;
+  const imgWidth = imgElement.value.clientWidth;
+  const imgHeight = imgElement.value.clientHeight;
 
+  // 计算鼠标移动的增量（缩略图坐标系）
   const deltaX = event.clientX - thumbStart.value.x;
   const deltaY = event.clientY - thumbStart.value.y;
 
-  const imgWidth = imgElement.value?.clientWidth || 1;
-  const imgHeight = imgElement.value?.clientHeight || 1;
+  // 将缩略图上的移动增量映射到大图的偏移量
+  const newPosX = posX.value - (deltaX / thumbBoxRect.width) * imgWidth * scale.value;
+  const newPosY = posY.value - (deltaY / thumbBoxRect.height) * imgHeight * scale.value;
 
-  posX.value -= (deltaX / thumbWidth) * imgWidth * scale.value;
-  posY.value -= (deltaY / thumbHeight) * imgHeight * scale.value;
+  // 计算最大允许偏移量（确保大图不会超出容器）
+  const maxX = Math.max(0, (imgWidth * scale.value - thumbBoxRect.width) / 2);
+  const maxY = Math.max(0, (imgHeight * scale.value - thumbBoxRect.height) / 2);
 
+  // 限制 posX 和 posY 在合理范围内
+  posX.value = Math.max(-maxX, Math.min(maxX, newPosX));
+  posY.value = Math.max(-maxY, Math.min(maxY, newPosY));
+
+  // 更新起始位置
   thumbStart.value = { x: event.clientX, y: event.clientY };
 };
 const endThumbDrag = () => {
@@ -504,14 +530,18 @@ onUnmounted(() => {
 })
 // 边界限制
 watch([posX, posY, scale], () => {
-  const imgWidth = imgElement.value?.clientWidth || 0;
-  const imgHeight = imgElement.value?.clientHeight || 0;
-  const containerWidth = mainImg.value?.clientWidth || 0;
-  const containerHeight = mainImg.value?.clientHeight || 0;
+  if (!imgElement.value || !mainImg.value) return;
 
+  const imgWidth = imgElement.value.clientWidth;
+  const imgHeight = imgElement.value.clientHeight;
+  const containerWidth = mainImg.value.clientWidth;
+  const containerHeight = mainImg.value.clientHeight;
+
+  // 计算最大允许偏移量（确保大图不会超出容器）
   const maxX = Math.max(0, (imgWidth * scale.value - containerWidth) / 2);
   const maxY = Math.max(0, (imgHeight * scale.value - containerHeight) / 2);
 
+  // 限制 posX 和 posY 在合理范围内
   posX.value = Math.max(-maxX, Math.min(maxX, posX.value));
   posY.value = Math.max(-maxY, Math.min(maxY, posY.value));
 }, { immediate: true });
@@ -678,6 +708,7 @@ function goto_next(id) {
   border: 1px solid #ccc;
   background: #fff;
   z-index: 100;
+  overflow: hidden;
 }
 
 .thumbnail {
@@ -697,6 +728,7 @@ function goto_next(id) {
   position: absolute;
   border: 2px solid red;
   cursor: move;
+  box-sizing: border-box;
 }
 
 .left .bm {
