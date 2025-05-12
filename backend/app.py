@@ -1,10 +1,12 @@
 import hashlib
+import os
 
 import pymysql
 from flask import Flask, jsonify, request
 from neo4j import GraphDatabase
 from flask_cors import CORS
 from flask_caching import Cache
+from PIL import Image
 
 app = Flask(__name__)
 
@@ -12,7 +14,7 @@ app = Flask(__name__)
 app.config['CACHE_TYPE'] = 'SimpleCache'
 app.config['CACHE_DEFAULT_TIMEOUT'] = 60  # 缓存默认时间，单位秒
 cache = Cache(app)
-CORS(app)  # 允许前端跨域访问
+CORS(app, supports_credentials=True, origins=['http://localhost:8080'])  # 允许前端跨域访问
 
 # neo4j
 driver = GraphDatabase.driver("bolt://127.0.0.1:7687", auth=("neo4j", "your_own_password"))
@@ -21,7 +23,7 @@ driver = GraphDatabase.driver("bolt://127.0.0.1:7687", auth=("neo4j", "your_own_
 db = pymysql.connect(
     host='localhost',
     user='root',
-    password='root123',
+    password='your_own_password',
     database='cultural_relics',
     charset='utf8mb4',
     cursorclass=pymysql.cursors.DictCursor
@@ -110,7 +112,8 @@ def login():
     if result is None:
         return jsonify({'status': 'error', 'message': '用户不存在'}), 401
     if result['password'] == hashed_password:
-        return jsonify({'status': 'success', 'message': '登录成功', 'username': result['name'], 'user_id':result['user_id']})
+        return jsonify(
+            {'status': 'success', 'message': '登录成功', 'username': result['name'], 'user_id': result['user_id']})
     else:
         return jsonify({'status': 'error', 'message': '密码错误'}), 401
 
@@ -296,7 +299,7 @@ def search_artifacts():
     if sort in sort_dict:
         sql += sort_dict[sort]
 
-    print(f"sql: {sql}", f"params: {params}")
+    # print(f"sql: {sql}", f"params: {params}")
 
     try:
         with db.cursor() as cursor:
@@ -332,7 +335,7 @@ def search_artifacts():
             db.close()
 
 
-# 页面图片
+# 文物详情
 @app.route('/api/detail_inform', methods=['GET'])
 def get_inform():
     relic_id = request.args.get('relic_id')
@@ -342,10 +345,10 @@ def get_inform():
 
     cursor = db.cursor()
     try:
-        #获取文物有关视频
-        sql="SELECT * FROM relic_video where relic_id=%s LIMIT 4"
-        cursor.execute(sql,(relic_id,))
-        videoData=cursor.fetchall()
+        # 获取文物有关视频
+        sql = "SELECT * FROM relic_video where relic_id=%s LIMIT 4"
+        cursor.execute(sql, (relic_id,))
+        videoData = cursor.fetchall()
         # 获取文物的图片URL
         sql = "SELECT * FROM relic_image WHERE relic_id = %s"
         cursor.execute(sql, (relic_id,))
@@ -356,7 +359,7 @@ def get_inform():
         sql = "SELECT * FROM cultural_relic WHERE relic_id = %s"
         cursor.execute(sql, (relic_id,))
         result = cursor.fetchone()
-        museum_id=result['museum_id']
+        museum_id = result['museum_id']
         print(museum_id)
         sql = "SELECT * FROM museum WHERE museum_id = %s"
         cursor.execute(sql, (museum_id,))
@@ -433,8 +436,8 @@ def get_inform():
             'authorlist': combined_authorlist,
             'dynastylist': combined_dynastylist,
             'rand_list': rand_list,
-            'museum':museum,
-            'video_data':videoData
+            'museum': museum,
+            'video_data': videoData
         }), 200
 
     except Exception as e:
@@ -468,52 +471,168 @@ def get_like(relic_id):
         return jsonify({'status': 'error', 'message': 'like_count is required'}), 400
     likes_count = data['likes_count']
     cursor = db.cursor()
-    #提交点赞
+    # 提交点赞
     sql = "UPDATE cultural_relic SET likes_count=%s  WHERE relic_id = %s"
-    cursor.execute(sql, (likes_count,relic_id,))
-    user_id=data['user_id']
-    islike=data['islike']
+    cursor.execute(sql, (likes_count, relic_id,))
+    user_id = data['user_id']
+    islike = data['islike']
     if islike:
-        sql="INSERT INTO relic_like(user_id,relic_id) VALUES (%s,%s)"
-        cursor.execute(sql,(user_id,relic_id))
+        sql = "INSERT INTO relic_like(user_id,relic_id) VALUES (%s,%s)"
+        cursor.execute(sql, (user_id, relic_id))
     else:
-        sql="DELETE FROM relic_like where relic_id=%s"
-        cursor.execute(sql,(relic_id,))
-    #提交收藏
+        sql = "DELETE FROM relic_like where relic_id=%s"
+        cursor.execute(sql, (relic_id,))
+    # 提交收藏
 
     db.commit()
     return jsonify({'status': 'success', 'message': '提交收藏成功'})
-#获得点赞记录
-@app.route('/api/get_thumsbup',methods=['GET'])
+
+
+# 获得点赞记录
+@app.route('/api/get_thumsbup', methods=['GET'])
 def get_thumbsup():
-    relic_id=request.args.get('relic_id')
+    relic_id = request.args.get('relic_id')
     print(relic_id)
-    cursor=db.cursor()
-    sql="SELECT user_id from relic_like where relic_id=%s"
-    cursor.execute(sql,(relic_id,))
-    user_id=cursor.fetchone()
-    sql="SELECT user_id from user_favorite where relic_id=%s"
-    cursor.execute(sql,(relic_id,))
-    user_favid=cursor.fetchone()
+    cursor = db.cursor()
+    sql = "SELECT user_id from relic_like where relic_id=%s"
+    cursor.execute(sql, (relic_id,))
+    user_id = cursor.fetchone()
+    sql = "SELECT user_id from user_favorite where relic_id=%s"
+    cursor.execute(sql, (relic_id,))
+    user_favid = cursor.fetchone()
     print(user_id)
-    return jsonify({"user_id": user_id,'user_favid':user_favid})
-   
-#获得收藏记录
-@app.route('/api/put_Fav/<Fav_id>',methods=['PUT'])
+    return jsonify({"user_id": user_id, 'user_favid': user_favid})
+
+
+# 获得收藏记录
+@app.route('/api/put_Fav/<Fav_id>', methods=['PUT'])
 def get_Fav(Fav_id):
-    data=request.get_json()
-    museum_id=data['museum_id']
-    relic_id=Fav_id
-    isFav=data['isFav']
-    user_id=data['user_id']
-    cursor=db.cursor()
+    data = request.get_json()
+    museum_id = data['museum_id']
+    relic_id = Fav_id
+    isFav = data['isFav']
+    user_id = data['user_id']
+    cursor = db.cursor()
     if isFav:
-        sql="INSERT INTO user_favorite(user_id,relic_id,museum_id,favorite_type) VALUES (%s,%s,%s,1)"
-        cursor.execute(sql,(user_id,relic_id,museum_id))
+        sql = "INSERT INTO user_favorite(user_id,relic_id,museum_id,favorite_type) VALUES (%s,%s,%s,1)"
+        cursor.execute(sql, (user_id, relic_id, museum_id))
     else:
-        sql="DELETE FROM user_favorite where relic_id=%s"
-        cursor.execute(sql,(relic_id,))
+        sql = "DELETE FROM user_favorite where relic_id=%s"
+        cursor.execute(sql, (relic_id,))
     return jsonify('提交成功')
+
+
+# 个人信息展示
+@app.route('/user_info/<int:user_id>', methods=['GET'])
+def get_user_info(user_id):
+    cursor = db.cursor()
+
+    # 获取用户信息
+    cursor.execute("""
+        SELECT user_id, phone_number, id_number, name, description, gender, age,
+               address, wechat, qq
+        FROM user WHERE user_id=%s
+    """, (user_id,))
+    user_info = cursor.fetchone()
+    if not user_info:
+        return jsonify({"error": "User not found"}), 404
+
+    # 查询收藏、点赞、评论的文物ID
+    cursor.execute("SELECT relic_id FROM user_favorite WHERE user_id=%s AND favorite_type=1", (user_id,))
+    favorite_ids = [row['relic_id'] for row in cursor.fetchall()]
+
+    cursor.execute("SELECT relic_id FROM relic_like WHERE user_id=%s", (user_id,))
+    like_ids = [row['relic_id'] for row in cursor.fetchall()]
+
+    cursor.execute("SELECT DISTINCT relic_id FROM relic_comment WHERE user_id=%s AND is_deleted=0", (user_id,))
+    comment_ids = [row['relic_id'] for row in cursor.fetchall()]
+
+    # 合并所有文物ID用于批量查询文物信息
+    all_ids = set(favorite_ids + like_ids + comment_ids)
+    relic_details = {}
+    if all_ids:
+        format_strings = ','.join(['%s'] * len(all_ids))
+        cursor.execute(f"""
+            SELECT r.*, i.img_url
+            FROM cultural_relic r
+            LEFT JOIN (
+                SELECT relic_id, MIN(img_url) as img_url 
+                FROM relic_image 
+                WHERE relic_id IN ({format_strings})
+                GROUP BY relic_id
+            ) i ON r.relic_id = i.relic_id
+            WHERE r.relic_id IN ({format_strings})
+        """, tuple(all_ids) * 2)  # 参数传两遍，一次用于子查询，一次用于主查询
+
+        for row in cursor.fetchall():
+            relic_details[row['relic_id']] = row
+
+    # 整理每一类的文物详细信息列表
+    favorites = [relic_details[rid] for rid in favorite_ids if rid in relic_details]
+    likes = [relic_details[rid] for rid in like_ids if rid in relic_details]
+    comments = [relic_details[rid] for rid in comment_ids if rid in relic_details]
+
+    result = {
+        "user_info": user_info,
+        "favorites": favorites,
+        "likes": likes,
+        "comments": comments
+    }
+
+    return jsonify(result)
+
+
+# 头像上传
+@app.route('/upload_avatar/<int:user_id>', methods=['POST'])
+def upload_avatar(user_id):
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+
+    try:
+        # 头像保存目录
+        avatar_dir = os.path.join('static', 'avatar')
+        os.makedirs(avatar_dir, exist_ok=True)
+
+        # 将图片转换为PNG并保存
+        image = Image.open(file.stream)
+        image = image.convert('RGBA')  # 转为支持透明通道的PNG格式
+        save_path = os.path.join(avatar_dir, f'{user_id}.png')
+        image.save(save_path, 'PNG')
+
+        return jsonify({'message': 'Upload successful'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# 修改密码
+@app.route('/update_password', methods=['POST'])
+def update_password():
+    data = request.get_json()
+    user_id = data.get('user_id')
+    new_password = data.get('new_password')
+
+    if not user_id or not new_password:
+        return jsonify({'status': 'error', 'message': '缺少必要参数'}), 400
+
+    hashed_password = hash_password(new_password)
+
+    try:
+        cursor = db.cursor()
+        cursor.execute("UPDATE user SET password = %s WHERE user_id = %s", (hashed_password, user_id))
+        db.commit()
+
+        if cursor.rowcount == 0:
+            return jsonify({'status': 'error', 'message': '用户不存在或密码未更新'}), 404
+
+        return jsonify({'status': 'success', 'message': '密码修改成功'})
+    except Exception as e:
+        db.rollback()
+        return jsonify({'status': 'error', 'message': '服务器错误: ' + str(e)}), 500
+
+
 
 if __name__ == "__main__":
     app.run(debug=True)

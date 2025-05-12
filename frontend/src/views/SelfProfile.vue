@@ -1,30 +1,206 @@
+<template>
+    <div class="common-layout">
+        <el-container>
+            <el-aside width="300px" class="aside">
+                <!-- 头像 -->
+                <el-upload
+                    class="avatar-uploader"
+                    :action="`http://localhost:5000/upload_avatar/${user_id}`"
+                    :show-file-list="false"
+                    :on-success="handleAvatarSuccess"
+                    :with-credentials="true"
+                    style="text-align: center;margin: 20px auto"
+                >
+                    <img v-if="imageUrl" :src="imageUrl" class="avatar"/>
+                    <el-avatar shape="square" v-else :size="100">user</el-avatar>
+                </el-upload>
+                <!--登出-->
+                <div style="text-align: center;margin: 10px auto;">
+                    <el-button @click="logout">登出</el-button>
+                </div>
+                <!-- 信息展示 -->
+                <el-descriptions title="个人信息" :column="1" label-width="70px"
+                                 style="padding-left: 30px;margin: 10px 0">
+                    <el-descriptions-item label="用户名">{{ userInfo.name }}</el-descriptions-item>
+                    <el-descriptions-item label="手机号码">{{ maskPhone(userInfo.phone_number) }}</el-descriptions-item>
+                    <el-descriptions-item label="身份证号">{{ maskIdNumber(userInfo.id_number) }}</el-descriptions-item>
+                    <el-descriptions-item label="性别">
+                        {{ userInfo.gender === 1 ? '男' : userInfo.gender === 2 ? '女' : '无' }}
+                    </el-descriptions-item>
+                    <el-descriptions-item label="年龄">{{ userInfo.age || '无' }}</el-descriptions-item>
+                    <el-descriptions-item label="地址">{{ userInfo.address || '无' }}</el-descriptions-item>
+                    <el-descriptions-item label="微信">{{ userInfo.wechat || '无' }}</el-descriptions-item>
+                    <el-descriptions-item label="QQ">{{ userInfo.qq || '无' }}</el-descriptions-item>
+                    <el-descriptions-item label="描述"></el-descriptions-item>
+                    <el-descriptions-item>{{ userInfo.description || '无' }}</el-descriptions-item>
+                </el-descriptions>
+                <div style="text-align: center;margin-bottom: 50px">
+                    <!-- 编辑信息 -->
+                    <el-button plain @click="openInfoDialog">
+                        编辑信息
+                    </el-button>
+                    <!-- 修改密码 -->
+                    <el-button plain @click="passVisible = true">
+                        修改密码
+                    </el-button>
+                </div>
+                <!-- 修改信息模态框 -->
+                <el-dialog title="编辑信息" v-model="InfoDialogVisible" :modal="false">
+                    <el-form
+                        style="max-width: 600px"
+                        :model="infoForm"
+                        status-icon
+                        :rules="infoRules"
+                        label-width="auto"
+                        class="demo-ruleForm"
+                    >
+                        <el-form-item label="用户名" prop="name">
+                            <el-input autocomplete="off" v-model="infoForm.name"/>
+                        </el-form-item>
+                        <el-form-item label="简介" prop="description">
+                            <el-input
+                                v-model="infoForm.description"
+                                :rows="2"
+                                type="textarea"
+                                placeholder="请输入简介"
+                            />
+                        </el-form-item>
+                        <el-form-item label="性别：" prop="gender">
+                            <el-radio-group v-model="infoForm.gender">
+                                <el-radio value="0">女</el-radio>
+                                <el-radio value="1">男</el-radio>
+                            </el-radio-group>
+                        </el-form-item>
+                        <el-form-item label="地址：" prop="address">
+                            <el-input v-model="infoForm.address"/>
+                        </el-form-item>
+                        <el-form-item label="年龄：" prop="age">
+                            <el-input-number type="number" :min="0" v-model="infoForm.age"/>
+                        </el-form-item>
+                        <el-form-item label="微信：" prop="wechat">
+                            <el-input v-model="infoForm.wechat"/>
+                        </el-form-item>
+                        <el-form-item label="QQ：" prop="qq">
+                            <el-input v-model="infoForm.qq"/>
+                        </el-form-item>
+                    </el-form>
+                    <template #footer>
+                        <div class="dialog-footer">
+                            <el-button @click="InfoDialogVisible = false">取消</el-button>
+                            <el-button type="primary" @click="submitInfoChange">
+                                确认
+                            </el-button>
+                        </div>
+                    </template>
+                </el-dialog>
+                <!-- 修改密码模态框 -->
+                <el-dialog v-model="passVisible" title="修改密码" :modal="false" width="400px">
+                    <el-form :rules="passRules" :model="passwordForm"
+                             label-width="80px" ref="passwordFormRef"
+                             status-icon>
+                        <el-form-item label="新密码" prop="newPassword">
+                            <el-input v-model="passwordForm.newPassword" type="password" autocomplete="off"/>
+                        </el-form-item>
+                        <el-form-item label="确认密码" prop="confirmPassword">
+                            <el-input v-model="passwordForm.confirmPassword" type="password" autocomplete="off"/>
+                        </el-form-item>
+                    </el-form>
+                    <template #footer>
+                        <div class="dialog-footer">
+                            <el-button @click="passVisible = false">取消</el-button>
+                            <el-button type="primary" @click="submitPasswordChange">确认</el-button>
+                        </div>
+                    </template>
+                </el-dialog>
+            </el-aside>
+            <!-- 主要部分 -->
+            <el-main class="el-main-demo">
+                <UserFavLike></UserFavLike>
+            </el-main>
+        </el-container>
+    </div>
+
+</template>
+
 <script setup>
-import {inject} from "vue";
+import {inject, onMounted} from "vue";
 import {useRouter} from "vue-router";
 import {ref} from 'vue'
 import {ElMessage} from 'element-plus'
-import {Plus} from '@element-plus/icons-vue'
-// `imageUrl` 是一个响应式数据，用来存储图片的 URL
-const imageUrl = ref('');
+import UserFavLike from "@/components/UserFavLike.vue";
+import axios from "axios";
 
-// 头像上传成功时的回调函数
-const handleAvatarSuccess = (response, uploadFile) => {
-    imageUrl.value = URL.createObjectURL(uploadFile.raw);
-};
+const InfoDialogVisible = ref(true)
+const passVisible = ref(false)
+const passwordForm = ref({
+    newPassword: '',
+    confirmPassword: ''
+})
+const infoForm = ref({
+    name: '',
+    description: '',
+    gender: '',
+    address: '',
+    age: '',
+    wechat: '',
+    qq: ''
+})
+const passRules = {
+    newPassword: [
+        {required: true, message: '请输入新密码', trigger: 'blur'},
+        {
+            validator: (rule, value, callback) => {
+                if (value.length < 6) {
+                    callback(new Error('密码长度不能小于6'));
+                } else {
+                    callback();
+                }
+            }
+        }
+    ],
+    confirmPassword: [
+        {required: true, message: '请确认密码', trigger: 'blur'},
+        {
+            validator: (rule, value, callback) => {
+                if (value !== passwordForm.value.newPassword) {
+                    callback(new Error('两次密码不一致'))
+                } else {
+                    callback()
+                }
+            }
+        }
+    ],
+}
+const infoRules = {
+    name: [
+        {required: true, message: '用户名不能为空', trigger: 'blur'}
+    ]
+}
+const passwordFormRef = ref(null)
 
-// 上传文件之前的校验
-const beforeAvatarUpload = (rawFile) => {
-    if (rawFile.type !== 'image/jpeg') {
-        ElMessage.error('Avatar picture must be JPG format!');
-        return false;
-    } else if (rawFile.size / 1024 / 1024 > 2) {
-        ElMessage.error('Avatar picture size can not exceed 2MB!');
-        return false;
-    }
-    return true;
-};
+const user_id = sessionStorage.getItem("user_id")
 const isLoggedIn = inject('isLoggedIn')
 const router = useRouter()
+const imageUrl = ref(`http://localhost:5000/static/avatar/${user_id}.png`);
+const userInfo = ref({})
+const infoFormRef = ref(null)
+
+// 上传成功后，强制刷新图片（避免缓存）
+const handleAvatarSuccess = () => {
+    // 加时间戳避免缓存
+    imageUrl.value = `http://localhost:5000/static/avatar/${user_id}.png?t=${Date.now()}`;
+};
+
+
+onMounted(async () => {
+    try {
+        const response = await axios.get(`http://localhost:5000/user_info/${user_id}`)
+        userInfo.value = response.data.user_info
+    } catch (error) {
+        ElMessage.error("获取用户信息失败")
+        console.error(error)
+    }
+})
 
 //登出
 const logout = () => {
@@ -32,218 +208,92 @@ const logout = () => {
     isLoggedIn.value = false;
     router.push('/login');
 }
-//修改信息
-// 表单引用
-// const ruleFormRef = ref()
-const dialogVisible = ref(false)
-const passVisible = ref(false)
-// // 年龄验证函数
-// const checkAge = (rule, value, callback) => {
-//   if (!value) {
-//     return callback(new Error('Please input the age'))
-//   }
-//   setTimeout(() => {
-//     if (!Number.isInteger(value)) {
-//       callback(new Error('Please input digits'))
-//     } else {
-//       if (value < 18) {
-//         callback(new Error('Age must be greater than 18'))
-//       } else {
-//         callback()
-//       }
-//     }
-//   }, 1000)
-// }
 
-// // 密码验证函数
-// const validatePass = (rule, value, callback) => {
-//   if (value === '') {
-//     callback(new Error('Please input the password'))
-//   } else {
-//     if (ruleForm.checkPass !== '') {
-//       if (!ruleFormRef.value) return
-//       ruleFormRef.value.validateField('checkPass')
-//     }
-//     callback()
-//   }
-// }
+// 脱敏手机号（如：181****0000）
+const maskPhone = (phone) => {
+    if (!phone) return '';
+    return phone.replace(/^(\d{3})\d{4}(\d{4})$/, '$1****$2');
+}
 
-// // 确认密码验证函数
-// const validatePass2 = (rule, value, callback) => {
-//   if (value === '') {
-//     callback(new Error('Please input the password again'))
-//   } else if (value !== ruleForm.pass) {
-//     callback(new Error("Two inputs don't match!"))
-//   } else {
-//     callback()
-//   }
-// }
+// 脱敏身份证号（如：3201**********1234）
+const maskIdNumber = (id) => {
+    if (!id) return '';
+    return id.replace(/^(\d{4})\d{10}(\d{4})$/, '$1**********$2');
+}
 
-// // 表单数据
-// const ruleForm = reactive({
-//   pass: '',
-//   checkPass: '',
-//   age: '',
-// })
+// 提交修改密码请求
+const submitPasswordChange = async () => {
+    try {
+        await passwordFormRef.value.validate()
 
-// // 表单验证规则
-// const rules = reactive({
-//   pass: [{ validator: validatePass, trigger: 'blur' }],
-//   checkPass: [{ validator: validatePass2, trigger: 'blur' }],
-//   age: [{ validator: checkAge, trigger: 'blur' }],
-// })
+        if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword) {
+            ElMessage.error('两次密码不一致，请重新输入确认密码')
+            passwordForm.value.confirmPassword = ''
+            return
+        }
 
-// // 提交表单
-// const submitForm = (formEl) => {
-//   if (!formEl) return
-//   formEl.validate((valid) => {
-//     if (valid) {
-//       console.log('submit!')
-//     } else {
-//       console.log('error submit!')
-//     }
-//   })
-// }
+        const response = await axios.post(`http://localhost:5000/update_password`, {
+            user_id: user_id,
+            new_password: passwordForm.value.newPassword
+        }, {
+            withCredentials: true
+        })
 
-// // 重置表单
-// const resetForm = (formEl) => {
-//   if (!formEl) return
-//   formEl.resetFields()
-// }
+        if (response.data.status) {
+            ElMessage.success('密码修改成功！')
+            passVisible.value = false
+            passwordForm.value.newPassword = ''
+            passwordForm.value.confirmPassword = ''
+        } else {
+            ElMessage.error(response.data.message || '密码修改失败')
+        }
+    } catch (err) {
+        ElMessage.error('提交失败：' + (err.response?.data?.message || err.message))
+    }
+}
+
+// 打开编辑信息时获取已有信息
+const openInfoDialog = async () => {
+    const data = userInfo.value
+    infoForm.value = {
+        name: data.name || '',
+        description: data.description || '',
+        gender: data.gender !== null ? String(data.gender) : '',
+        address: data.address || '',
+        age: data.age || '',
+        wechat: data.wechat || '',
+        qq: data.qq || ''
+    }
+    InfoDialogVisible.value = true
+}
+
+// 提交编辑信息
+const submitInfoChange = async () => {
+    await infoFormRef.value.validate()
+    try {
+        const response = await axios.post('http://localhost:5000/update_user_info', {
+            user_id: user_id,
+            ...infoForm.value
+        })
+
+        if (response.data.status === 'success') {
+            ElMessage.success('用户信息更新成功')
+            InfoDialogVisible.value = false
+        } else {
+            ElMessage.error(response.data.message || '更新失败')
+        }
+    } catch (err) {
+        ElMessage.error('请求失败：' + err.message)
+    }
+}
+
 </script>
 
-<template>
-    <div class="common-layout">
-        <el-container>
-            <el-aside width="200px" class="aside">
-                <h1>个人信息</h1>
-                <!-- 头像 -->
-                <el-upload
-                    class="avatar-uploader"
-                    action="https://run.mocky.io/v3/9d059bf9-4660-45f2-925d-ce80ad6c4d15"
-                    :show-file-list="false"
-                    :on-success="handleAvatarSuccess"
-                    :before-upload="beforeAvatarUpload"
-                >
-                    <img v-if="imageUrl" :src="imageUrl" class="avatar"/>
-                    <el-icon v-else class="avatar-uploader-icon">
-                        <Plus/>
-                    </el-icon>
-                </el-upload>
-
-                <!-- 修改信息 -->
-                <el-button plain @click="dialogVisible = true">
-                    修改信息
-                </el-button>
-                <el-dialog v-model="dialogVisible" :modal="false" class="el-dia">
-                    <div class="title">
-                        <h1>用户信息修改</h1>
-                    </div>
-                    <el-form
-                        ref="ruleFormRef"
-                        style="max-width: 600px"
-                        :model="ruleForm"
-                        status-icon
-                        :rules="rules"
-                        label-width="auto"
-                        class="demo-ruleForm"
-                    >
-
-                        <el-form-item label="用户名：" prop="user">
-                            <el-input type="username" autocomplete="off"/>
-                        </el-form-item>
-                        <el-form-item label="简介：" prop="descr">
-                            <el-input
-                                v-model="textarea"
-                                :rows="2"
-                                type="textarea"
-                                placeholder="Please input"
-                                class="no-resize"
-                            />
-                        </el-form-item>
-                        <el-form-item label="性别：" prop="gender">
-                            <el-input/>
-                        </el-form-item>
-                        <el-form-item label="地址：" prop="address">
-                            <el-input/>
-                        </el-form-item>
-                        <el-form-item label="年龄：" prop="age">
-                            <el-input/>
-                        </el-form-item>
-                        <el-form-item label="微信：" prop="wechat">
-                            <el-input/>
-                        </el-form-item>
-                        <el-form-item label="QQ：" prop="qq">
-                            <el-input/>
-                        </el-form-item>
-                    </el-form>
-                    <template #footer>
-                        <div class="dialog-footer">
-                            <el-button @click="dialogVisible = false">Cancel</el-button>
-                            <el-button type="primary" @click="dialogVisible = false">
-                                Confirm
-                            </el-button>
-                        </div>
-                    </template>
-                </el-dialog>
-                <!-- 信息展示 -->
-                <el-card style="max-width: 480px">
-                    <template #header>
-                        <div class="card-header">
-                            <span>Card name</span>
-                        </div>
-                    </template>
-                    <p v-for="o in 4" :key="o" class="text item">{{ 'List item ' + o }}</p>
-                    <template #footer>Footer content</template>
-                </el-card>
-            </el-aside>
-            <!-- 主要部分 -->
-            <el-main class="el-main-demo">
-                <!-- 菜单栏 -->
-                <el-tabs type="border-card" class="demo-tabs">
-                    <el-tab-pane label="Config">
-                        <template #label>
-                  <span class="custom-tabs-label">
-                    <el-icon><Star/></el-icon>
-                    <span>收藏</span>
-                  </span>
-                        </template>
-                        收藏
-                    </el-tab-pane>
-                    <el-tab-pane label="Role">
-                        <template #label>
-                  <span class="custom-tabs-label">
-                    <el-icon><ChatDotSquare/></el-icon>
-                    <span>评论</span>
-                  </span>
-                        </template>
-                        评论
-                    </el-tab-pane>
-                </el-tabs>
-            </el-main>
-        </el-container>
-    </div>
-    <el-button @click="logout">登出</el-button>
-    <!-- 修改密码 -->
-    <el-button plain @click="passVisible = true">
-        修改密码
-    </el-button>
-    <el-dialog v-model="passVisible" :modal="false">
-        <el-form-item label="密码：" prop="pass">
-            <el-input type="password" autocomplete="off"/>
-        </el-form-item>
-        <template #footer>
-            <div class="dialog-footer">
-                <el-button @click="passVisible = false">Cancel</el-button>
-                <el-button type="primary" @click="passVisible = false">
-                    Confirm
-                </el-button>
-            </div>
-        </template>
-    </el-dialog>
-</template>
-
 <style scoped>
+.el-upload {
+    margin: 0 auto;
+}
+
 .el-menu--horizontal {
     --el-menu-horizontal-height: 70px;
     --el-menu-hover-text-color: grey;
@@ -274,12 +324,6 @@ const passVisible = ref(false)
     height: 50px; /* 设置高度使内容垂直居中 */
 }
 
-.el-dia {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
 .demo-ruleForm {
     width: 100%; /* 让表单宽度占满容器 */
     max-width: 600px; /* 最大宽度 */
@@ -291,8 +335,6 @@ const passVisible = ref(false)
     justify-content: center;
 }
 
-</style>
-<style>
 .avatar-uploader .el-upload {
     border: 1px dashed var(--el-border-color);
     border-radius: 6px;
@@ -330,7 +372,4 @@ const passVisible = ref(false)
     margin-left: 4px;
 }
 
-.demo-ruleForm .no-resize {
-    resize: none !important;
-}
 </style>
