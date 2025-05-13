@@ -156,7 +156,7 @@
                     </li>
                 </ul>
             </div>
-            
+
             <!-- 判断是否有返回值 -->
             <h1 v-if="!(name_list.length===0 && author_list.length===0 && dynasty_list.length===0)">相关推荐</h1>
             <h1 v-else>随机推荐</h1>
@@ -317,7 +317,7 @@ async function detailRender(id) {
         else {
             isVideo.value=false
         }
-        
+
         const data = await axios.get('http://localhost:5000/api/get_thumsbup', {
             params: { relic_id: id }
     })
@@ -337,7 +337,8 @@ async function detailRender(id) {
     }
         //进入页面浏览+1
         axios.put(`http://localhost:5000/api/put_view/${id}`, {
-            views_count: views_count.value + 1
+            views_count: views_count.value + 1,
+            user_id:sessionStorage.getItem('user_id')
         })
         // 页面右侧滑动窗口滚动到顶部
         nextTick(() => {

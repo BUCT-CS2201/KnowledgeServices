@@ -53,6 +53,7 @@
                         :rules="infoRules"
                         label-width="auto"
                         class="demo-ruleForm"
+                        ref="infoFormRef"
                     >
                         <el-form-item label="用户名" prop="name">
                             <el-input autocomplete="off" v-model="infoForm.name"/>
@@ -115,7 +116,12 @@
             </el-aside>
             <!-- 主要部分 -->
             <el-main class="el-main-demo">
-                <UserFavLike></UserFavLike>
+                <UserFavLike
+                    :favorites="favoriteInfo"
+                    :likes="likeInfo"
+                    :comments="commentInfo"
+                    :browse="browseInfo"
+                />
             </el-main>
         </el-container>
     </div>
@@ -130,21 +136,21 @@ import {ElMessage} from 'element-plus'
 import UserFavLike from "@/components/UserFavLike.vue";
 import axios from "axios";
 
-const InfoDialogVisible = ref(true)
-const passVisible = ref(false)
+const InfoDialogVisible = ref(false)//编辑信息模态框可见性
+const passVisible = ref(false)//修改密码模态框可见性
 const passwordForm = ref({
     newPassword: '',
     confirmPassword: ''
-})
+})//修改密码表单内容
 const infoForm = ref({
     name: '',
     description: '',
-    gender: '',
+    gender: null,
     address: '',
-    age: '',
+    age: null,
     wechat: '',
     qq: ''
-})
+})//编辑信息表单内容
 const passRules = {
     newPassword: [
         {required: true, message: '请输入新密码', trigger: 'blur'},
@@ -170,20 +176,24 @@ const passRules = {
             }
         }
     ],
-}
+}//修改密码表单验证
 const infoRules = {
     name: [
         {required: true, message: '用户名不能为空', trigger: 'blur'}
     ]
-}
-const passwordFormRef = ref(null)
+}//编辑信息表单验证
+const passwordFormRef = ref(null)//修改密码表单
+const infoFormRef = ref(null)//编辑信息表单
 
 const user_id = sessionStorage.getItem("user_id")
 const isLoggedIn = inject('isLoggedIn')
 const router = useRouter()
-const imageUrl = ref(`http://localhost:5000/static/avatar/${user_id}.png`);
-const userInfo = ref({})
-const infoFormRef = ref(null)
+const imageUrl = ref(`http://localhost:5000/static/avatar/${user_id}.png`);//获取用户头像
+const userInfo = ref({})//用户信息展示
+const favoriteInfo = ref({})//用户收藏展示
+const likeInfo = ref({})//用户点赞展示
+const commentInfo = ref({})//用户评论展示
+const browseInfo = ref({})//用户浏览记录展示
 
 // 上传成功后，强制刷新图片（避免缓存）
 const handleAvatarSuccess = () => {
@@ -191,15 +201,22 @@ const handleAvatarSuccess = () => {
     imageUrl.value = `http://localhost:5000/static/avatar/${user_id}.png?t=${Date.now()}`;
 };
 
-
-onMounted(async () => {
+async function renderInfo() {
     try {
         const response = await axios.get(`http://localhost:5000/user_info/${user_id}`)
         userInfo.value = response.data.user_info
+        favoriteInfo.value = response.data.favorites
+        likeInfo.value = response.data.likes
+        commentInfo.value = response.data.comments
+        browseInfo.value = response.data.browsing_history
     } catch (error) {
         ElMessage.error("获取用户信息失败")
         console.error(error)
     }
+}
+
+onMounted(async () => {
+    renderInfo();
 })
 
 //登出
@@ -282,6 +299,7 @@ const submitInfoChange = async () => {
         } else {
             ElMessage.error(response.data.message || '更新失败')
         }
+        renderInfo()
     } catch (err) {
         ElMessage.error('请求失败：' + err.message)
     }

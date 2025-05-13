@@ -1,5 +1,6 @@
 import hashlib
 import os
+from datetime import datetime
 
 import pymysql
 from flask import Flask, jsonify, request
@@ -84,7 +85,7 @@ def fetch_graph_data(keyword=None):
         return {"nodes": list(nodes.values()), "links": links}
 
 
-# 可缓存的函数（关键字参数必须参与 key 生成）
+# 获取知识图谱数据（含缓存）
 @cache.memoize(timeout=120)  # 设置缓存 2 分钟
 def fetch_graph_data_cached(keyword=None):
     return fetch_graph_data(keyword)
@@ -447,18 +448,48 @@ def get_inform():
             cursor.close()
 
 
-# 提交浏览记录
+# 提交浏览记录(并更新用户浏览记录表)
 @app.route('/api/put_view/<relic_id>', methods=['PUT'])
 def get_view(relic_id):
     data = request.get_json()
     print(data)
     if not data:
         return jsonify({'status': 'error', 'message': 'views_count is required'}), 400
+
     views_count = data['views_count']
+    user_id = data['user_id']
+
     cursor = db.cursor()
     sql = "UPDATE cultural_relic SET views_count=%s  WHERE relic_id = %s"
     cursor.execute(sql, (views_count, relic_id,))
+
+    # 先查询是否已有浏览记录
+    sql_check_history = """
+            SELECT id FROM user_browsing_history 
+            WHERE user_id = %s AND relic_id = %s
+        """
+    cursor.execute(sql_check_history, (user_id, relic_id))
+    result = cursor.fetchone()
+    # print(f"result={result}")
+
+    if result:
+        # 更新浏览时间
+        sql_update_history = """
+                UPDATE user_browsing_history 
+                SET browse_time = %s 
+                WHERE id = %s
+            """
+        cursor.execute(sql_update_history, (datetime.now(), result['id']))
+    else:
+        # 插入新的浏览记录
+        sql_insert_history = """
+                INSERT INTO user_browsing_history (user_id, relic_id, browse_time) 
+                VALUES (%s, %s, %s)
+            """
+        cursor.execute(sql_insert_history, (user_id, relic_id, datetime.now()))
+
     db.commit()
+
     return jsonify({'status': 'success', 'message': '提交浏览成功'})
 
 
@@ -547,22 +578,23 @@ def get_user_info(user_id):
     cursor.execute("SELECT DISTINCT relic_id FROM relic_comment WHERE user_id=%s AND is_deleted=0", (user_id,))
     comment_ids = [row['relic_id'] for row in cursor.fetchall()]
 
+    cursor.execute("select relic_id FROM user_browsing_history WHERE user_id=%s", (user_id,))
+    browsing_history_ids = [row['relic_id'] for row in cursor.fetchall()]
+
     # 合并所有文物ID用于批量查询文物信息
-    all_ids = set(favorite_ids + like_ids + comment_ids)
+    all_ids = set(favorite_ids + like_ids + comment_ids + browsing_history_ids)
     relic_details = {}
     if all_ids:
         format_strings = ','.join(['%s'] * len(all_ids))
         cursor.execute(f"""
-            SELECT r.*, i.img_url
-            FROM cultural_relic r
-            LEFT JOIN (
-                SELECT relic_id, MIN(img_url) as img_url 
-                FROM relic_image 
-                WHERE relic_id IN ({format_strings})
-                GROUP BY relic_id
-            ) i ON r.relic_id = i.relic_id
-            WHERE r.relic_id IN ({format_strings})
-        """, tuple(all_ids) * 2)  # 参数传两遍，一次用于子查询，一次用于主查询
+            SELECT cr.relic_id, cr.name, cr.type, cr.matrials,
+               cr.dynasty, cr.author, cr.entry_time,
+               ri.img_url, m.museum_name
+        FROM cultural_relic cr
+        JOIN museum m ON cr.museum_id = m.museum_id
+        LEFT JOIN relic_image ri ON cr.relic_id = ri.relic_id
+        WHERE cr.relic_id IN ({format_strings})
+        """, tuple(all_ids))  # 参数传两遍，一次用于子查询，一次用于主查询
 
         for row in cursor.fetchall():
             relic_details[row['relic_id']] = row
@@ -571,12 +603,14 @@ def get_user_info(user_id):
     favorites = [relic_details[rid] for rid in favorite_ids if rid in relic_details]
     likes = [relic_details[rid] for rid in like_ids if rid in relic_details]
     comments = [relic_details[rid] for rid in comment_ids if rid in relic_details]
+    browsing_history = [relic_details[rid] for rid in browsing_history_ids if rid in relic_details]
 
     result = {
         "user_info": user_info,
         "favorites": favorites,
         "likes": likes,
-        "comments": comments
+        "comments": comments,
+        "browsing_history": browsing_history
     }
 
     return jsonify(result)
@@ -632,6 +666,49 @@ def update_password():
         db.rollback()
         return jsonify({'status': 'error', 'message': '服务器错误: ' + str(e)}), 500
 
+
+# 编辑用户信息
+@app.route('/update_user_info', methods=['POST'])
+def update_user_info():
+    data = request.get_json()
+    user_id = data.get('user_id')
+
+    if not user_id:
+        return jsonify({'status': 'error', 'message': '缺少用户ID'}), 400
+
+    name = data.get('name')
+    description = data.get('description')
+    gender = data.get('gender')
+    address = data.get('address')
+    age = data.get('age')
+    wechat = data.get('wechat')
+    qq = data.get('qq')
+
+    if not name:
+        return jsonify({'status': 'error', 'message': '用户名不能为空'}), 400
+
+    try:
+        cursor = db.cursor()
+        cursor.execute("""
+            UPDATE user
+            SET name = %s,
+                description = %s,
+                gender = %s,
+                address = %s,
+                age = %s,
+                wechat = %s,
+                qq = %s
+            WHERE user_id = %s
+        """, (name, description, gender, address, age, wechat, qq, user_id))
+        db.commit()
+
+        if cursor.rowcount == 0:
+            return jsonify({'status': 'error', 'message': '用户未找到或信息未变动'}), 404
+
+        return jsonify({'status': 'success', 'message': '用户信息更新成功'})
+    except Exception as e:
+        db.rollback()
+        return jsonify({'status': 'error', 'message': '数据库错误: ' + str(e)}), 500
 
 
 if __name__ == "__main__":
