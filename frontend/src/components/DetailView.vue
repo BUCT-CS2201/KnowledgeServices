@@ -1,29 +1,30 @@
 <template>
     <div class="detail">
         <div class="main">
-            <div class="left" ref="leftSide" @wheel.prevent="onWheel" @mousedown="startDrag" @mousemove="onDrag" @mouseup="endDrag" @mouseleave="endDrag">
+            <div class="left" ref="leftSide" @wheel.prevent="onWheel" @mousedown="startDrag" @mousemove="onDrag"
+                 @mouseup="endDrag" @mouseleave="endDrag">
                 <div class="l-img" ref="mainImg" :style="{ cursor: isDragging ? 'grabbing' : 'grab' }">
                     <div class="image-container" ref="imageContainer">
 
                     </div>
                     <img v-if="imageSrc" :src="imageSrc" :style="imageStyle" alt="" ref="imgElement"
-                    @mousedown="startDrag"
-                    @mousemove="onDrag"
-                    @mouseup="endDrag"
-                    @mouseleave="endDrag">
+                         @mousedown="startDrag"
+                         @mousemove="onDrag"
+                         @mouseup="endDrag"
+                         @mouseleave="endDrag">
                     <el-empty v-else description="无图片"/>
                     <!-- 放大时的局部显示框 -->
-            <div v-if="scale > 1" class="zoom-rect" :style="zoomRectStyle"></div>
+                    <div v-if="scale > 1" class="zoom-rect" :style="zoomRectStyle"></div>
                 </div>
                 <!-- 缩略图预览框 -->
                 <div v-if="imageSrc" class="thumbnail-box">
                     <div class="thumbnail" ref="thumbBox">
-                    <img :src="imageSrc" />
-                    <div
-                        class="view-rect"
-                        :style="thumbnailRectStyle"
-                        @mousedown.prevent.stop="startThumbDrag"
-                    ></div>
+                        <img :src="imageSrc"/>
+                        <div
+                            class="view-rect"
+                            :style="thumbnailRectStyle"
+                            @mousedown.prevent.stop="startThumbDrag"
+                        ></div>
                     </div>
                 </div>
 
@@ -43,8 +44,12 @@
                         </li>
                         <li @click="updatelike" style="cursor:pointer;">
                             <h5>
-                                <el-icon v-if="islike"><Sunrise /></el-icon>
-                                <el-icon v-else><Sunny /></el-icon>
+                                <el-icon v-if="islike">
+                                    <Sunrise/>
+                                </el-icon>
+                                <el-icon v-else>
+                                    <Sunny/>
+                                </el-icon>
                                 点赞{{ likes_count }}
                             </h5>
                         </li>
@@ -53,7 +58,9 @@
                                 <el-icon v-if="isFav">
                                     <Star/>
                                 </el-icon>
-                                <el-icon v-else><StarFilled /></el-icon>
+                                <el-icon v-else>
+                                    <StarFilled/>
+                                </el-icon>
                                 收藏
                             </h5>
                         </li>
@@ -239,7 +246,7 @@
 </template>
 
 <script setup name="DetailView">
-import {ref, onMounted, watch, nextTick,onUnmounted,computed} from 'vue'
+import {ref, onMounted, watch, nextTick, onUnmounted, computed} from 'vue'
 import axios from 'axios'
 import {ElMessage} from 'element-plus'
 import {useRoute, useRouter} from 'vue-router'
@@ -268,12 +275,12 @@ let views_count = ref(null)
 let likes_count = ref(null)
 let randlist = ref([])
 let museum_id = ref(null)
-let videoData=ref('')
-let isVideo=ref(false)
+let videoData = ref('')
+let isVideo = ref(false)
 //判断是否点赞
 let islike = ref(false)
 //判断是否收藏
-let isFav=ref(false)
+let isFav = ref(false)
 // 页面打开渲染图片
 // 父组件给子组件image_id
 //根据所给的image_id查找url，根据relic_id查找到详细信息
@@ -282,7 +289,7 @@ async function detailRender(id) {
         let relicData = await axios.get('http://localhost:5000/api/detail_inform', {
             params: {relic_id: id}
         })
-        const { img_url, relic_inform, namelist, authorlist, dynastylist, rand_list,museum,video_data} = relicData.data
+        const {img_url, relic_inform, namelist, authorlist, dynastylist, rand_list, museum, video_data} = relicData.data
         console.log(museum)
         imageSrc.value = img_url
         name_list.value = namelist
@@ -303,42 +310,41 @@ async function detailRender(id) {
         type.value = relic_inform.type
         size.value = relic_inform.size
         location.value = museum.museum_name
-        museum_id.value=relic_inform.museum_id
+        museum_id.value = relic_inform.museum_id
         console.log(location.value)
         description.value = relic_inform.description
         views_count.value = relic_inform.views_count
         likes_count.value = relic_inform.likes_count
         videoData.value = video_data
-        console.log(videoData.value.video_url)
+        console.log("videoData.value.video_url", videoData.value.video_url)
         console.log(videoData.value.type)
-        if (videoData.value) {
-            isVideo.value=true
-        }
-        else {
-            isVideo.value=false
+        if (videoData.value.video_url !== undefined) {
+            isVideo.value = true
+        } else {
+            isVideo.value = false
         }
 
         const data = await axios.get('http://localhost:5000/api/get_thumsbup', {
-            params: { relic_id: id }
-    })
+            params: {relic_id: id}
+        })
         console.log(data.data.user_id)
-    //判断点赞
-    if (data.data.user_id===null) {
-        islike.value=true
-    } else {
-        islike.value=false
+        //判断点赞
+        if (data.data.user_id === null) {
+            islike.value = true
+        } else {
+            islike.value = false
         }
         console.log(islike.value)
         //判断收藏
         if (data.data.user_favid === null) {
-        isFav.value=true
+            isFav.value = true
         } else {
-        isFav.value=false
-    }
+            isFav.value = false
+        }
         //进入页面浏览+1
         axios.put(`http://localhost:5000/api/put_view/${id}`, {
             views_count: views_count.value + 1,
-            user_id:sessionStorage.getItem('user_id')
+            user_id: sessionStorage.getItem('user_id')
         })
         // 页面右侧滑动窗口滚动到顶部
         nextTick(() => {
@@ -354,7 +360,6 @@ async function detailRender(id) {
         })
     }
 }
-
 
 
 //监听id是否改变
@@ -382,10 +387,10 @@ function updatelike() {
     }
     axios.put(`http://localhost:5000/api/put_like/${id}`, {
         likes_count: likes_count.value,
-        user_id:sessionStorage.getItem('user_id'),
+        user_id: sessionStorage.getItem('user_id'),
         islike: islike.value,
     })
-    islike.value=!islike.value
+    islike.value = !islike.value
 }
 
 //点击收藏
@@ -393,9 +398,9 @@ function updatefavorite() {
     axios.put(`http://localhost:5000/api/put_Fav/${id}`, {
         user_id: sessionStorage.getItem('user_id'),
         museum_id: museum_id.value,
-        isFav:isFav.value
+        isFav: isFav.value
     })
-    isFav.value=!isFav.value
+    isFav.value = !isFav.value
 }
 
 //放大
@@ -416,136 +421,136 @@ const scale = ref(1)
 const posX = ref(0)
 const posY = ref(0)
 const isDragging = ref(false)
-const dragStart = ref({ x: 0, y: 0 })
+const dragStart = ref({x: 0, y: 0})
 const isThumbDragging = ref(false)
-const thumbStart = ref({ x: 0, y: 0 })
+const thumbStart = ref({x: 0, y: 0})
 const imgElement = ref(null);
 const mainImg = ref(null);
 const thumbBox = ref(null);
 const imageStyle = computed(() => ({
-  transform: `scale(${scale.value}) translate(${posX.value}px, ${posY.value}px)`
+    transform: `scale(${scale.value}) translate(${posX.value}px, ${posY.value}px)`
 }))
 const thumbnailRectStyle = computed(() => {
-  if (!imgElement.value || !thumbBox.value) {
-    return {};
-  }
+    if (!imgElement.value || !thumbBox.value) {
+        return {};
+    }
 
-  const imgWidth = imgElement.value.clientWidth;
-  const imgHeight = imgElement.value.clientHeight;
-  const thumbWidth = thumbBox.value.clientWidth;
-  const thumbHeight = thumbBox.value.clientHeight;
+    const imgWidth = imgElement.value.clientWidth;
+    const imgHeight = imgElement.value.clientHeight;
+    const thumbWidth = thumbBox.value.clientWidth;
+    const thumbHeight = thumbBox.value.clientHeight;
 
-  // 计算红框的大小（缩略图上的可视区域）
-  const rectWidth = (thumbWidth / scale.value);
-  const rectHeight = (thumbHeight / scale.value);
+    // 计算红框的大小（缩略图上的可视区域）
+    const rectWidth = (thumbWidth / scale.value);
+    const rectHeight = (thumbHeight / scale.value);
 
-  // 计算红框的位置（映射 posX 和 posY 到缩略图坐标系）
-  // 大图的偏移量 (posX, posY) 是相对于其原始尺寸的，缩略图需要按比例映射
-  let rectLeft = (-posX.value / imgWidth) * thumbWidth;
-  let rectTop = (-posY.value / imgHeight) * thumbHeight;
+    // 计算红框的位置（映射 posX 和 posY 到缩略图坐标系）
+    // 大图的偏移量 (posX, posY) 是相对于其原始尺寸的，缩略图需要按比例映射
+    let rectLeft = (-posX.value / imgWidth) * thumbWidth;
+    let rectTop = (-posY.value / imgHeight) * thumbHeight;
 
-  // 边界检查：确保红框不会超出缩略图
-  rectLeft = Math.max(0, Math.min(thumbWidth - rectWidth, rectLeft));
-  rectTop = Math.max(0, Math.min(thumbHeight - rectHeight, rectTop));
+    // 边界检查：确保红框不会超出缩略图
+    rectLeft = Math.max(0, Math.min(thumbWidth - rectWidth, rectLeft));
+    rectTop = Math.max(0, Math.min(thumbHeight - rectHeight, rectTop));
 
-  return {
-    width: `${rectWidth}px`,
-    height: `${rectHeight}px`,
-    left: `${rectLeft}px`,
-    top: `${rectTop}px`,
-    border: '2px solid red',
-    position: 'absolute',
-  };
+    return {
+        width: `${rectWidth}px`,
+        height: `${rectHeight}px`,
+        left: `${rectLeft}px`,
+        top: `${rectTop}px`,
+        border: '2px solid red',
+        position: 'absolute',
+    };
 });
 const zoomIn = () => {
-  scale.value = Math.min(scale.value + 0.1, 5)
+    scale.value = Math.min(scale.value + 0.1, 5)
 }
 const zoomOut = () => {
-  scale.value = Math.max(scale.value - 0.1, 0.5)
+    scale.value = Math.max(scale.value - 0.1, 0.5)
 }
 
 const startDrag = (event) => {
-  isDragging.value = true;
-  dragStart.value = { x: event.clientX, y: event.clientY };
+    isDragging.value = true;
+    dragStart.value = {x: event.clientX, y: event.clientY};
 };
 
 const onWheel = (event) => {
-  const delta = event.deltaY
-  if (delta < 0) {
-    zoomIn()
-  } else {
-    zoomOut()
-  }
+    const delta = event.deltaY
+    if (delta < 0) {
+        zoomIn()
+    } else {
+        zoomOut()
+    }
 }
 
 const onDrag = (event) => {
-  if (!isDragging.value) return
-  posX.value += (event.clientX - dragStart.value.x) / scale.value
-  posY.value += (event.clientY - dragStart.value.y) / scale.value
-  dragStart.value = { x: event.clientX, y: event.clientY }
+    if (!isDragging.value) return
+    posX.value += (event.clientX - dragStart.value.x) / scale.value
+    posY.value += (event.clientY - dragStart.value.y) / scale.value
+    dragStart.value = {x: event.clientX, y: event.clientY}
 }
 const endDrag = () => {
-  isDragging.value = false
+    isDragging.value = false
 }
 const startThumbDrag = (event) => {
-  isThumbDragging.value = true
-  thumbStart.value = { x: event.clientX, y: event.clientY }
-  document.addEventListener('mousemove', onThumbDrag)
-  document.addEventListener('mouseup', endThumbDrag)
+    isThumbDragging.value = true
+    thumbStart.value = {x: event.clientX, y: event.clientY}
+    document.addEventListener('mousemove', onThumbDrag)
+    document.addEventListener('mouseup', endThumbDrag)
 }
 const onThumbDrag = (event) => {
-  if (!isThumbDragging.value || !imgElement.value || !thumbBox.value) return;
+    if (!isThumbDragging.value || !imgElement.value || !thumbBox.value) return;
 
-  const thumbBoxRect = thumbBox.value.getBoundingClientRect();
-  const imgWidth = imgElement.value.clientWidth;
-  const imgHeight = imgElement.value.clientHeight;
+    const thumbBoxRect = thumbBox.value.getBoundingClientRect();
+    const imgWidth = imgElement.value.clientWidth;
+    const imgHeight = imgElement.value.clientHeight;
 
-  // 计算鼠标移动的增量（缩略图坐标系）
-  const deltaX = event.clientX - thumbStart.value.x;
-  const deltaY = event.clientY - thumbStart.value.y;
+    // 计算鼠标移动的增量（缩略图坐标系）
+    const deltaX = event.clientX - thumbStart.value.x;
+    const deltaY = event.clientY - thumbStart.value.y;
 
-  // 将缩略图上的移动增量映射到大图的偏移量
-  const newPosX = posX.value - (deltaX / thumbBoxRect.width) * imgWidth * scale.value;
-  const newPosY = posY.value - (deltaY / thumbBoxRect.height) * imgHeight * scale.value;
+    // 将缩略图上的移动增量映射到大图的偏移量
+    const newPosX = posX.value - (deltaX / thumbBoxRect.width) * imgWidth * scale.value;
+    const newPosY = posY.value - (deltaY / thumbBoxRect.height) * imgHeight * scale.value;
 
-  // 计算最大允许偏移量（确保大图不会超出容器）
-  const maxX = Math.max(0, (imgWidth * scale.value - thumbBoxRect.width) / 2);
-  const maxY = Math.max(0, (imgHeight * scale.value - thumbBoxRect.height) / 2);
+    // 计算最大允许偏移量（确保大图不会超出容器）
+    const maxX = Math.max(0, (imgWidth * scale.value - thumbBoxRect.width) / 2);
+    const maxY = Math.max(0, (imgHeight * scale.value - thumbBoxRect.height) / 2);
 
-  // 限制 posX 和 posY 在合理范围内
-  posX.value = Math.max(-maxX, Math.min(maxX, newPosX));
-  posY.value = Math.max(-maxY, Math.min(maxY, newPosY));
+    // 限制 posX 和 posY 在合理范围内
+    posX.value = Math.max(-maxX, Math.min(maxX, newPosX));
+    posY.value = Math.max(-maxY, Math.min(maxY, newPosY));
 
-  // 更新起始位置
-  thumbStart.value = { x: event.clientX, y: event.clientY };
+    // 更新起始位置
+    thumbStart.value = {x: event.clientX, y: event.clientY};
 };
 const endThumbDrag = () => {
-  isThumbDragging.value = false
-  document.removeEventListener('mousemove', onThumbDrag)
-  document.removeEventListener('mouseup', endThumbDrag)
+    isThumbDragging.value = false
+    document.removeEventListener('mousemove', onThumbDrag)
+    document.removeEventListener('mouseup', endThumbDrag)
 }
 onUnmounted(() => {
-  // 清理监听
-  document.removeEventListener('mousemove', onThumbDrag)
-  document.removeEventListener('mouseup', endThumbDrag)
+    // 清理监听
+    document.removeEventListener('mousemove', onThumbDrag)
+    document.removeEventListener('mouseup', endThumbDrag)
 })
 // 边界限制
 watch([posX, posY, scale], () => {
-  if (!imgElement.value || !mainImg.value) return;
+    if (!imgElement.value || !mainImg.value) return;
 
-  const imgWidth = imgElement.value.clientWidth;
-  const imgHeight = imgElement.value.clientHeight;
-  const containerWidth = mainImg.value.clientWidth;
-  const containerHeight = mainImg.value.clientHeight;
+    const imgWidth = imgElement.value.clientWidth;
+    const imgHeight = imgElement.value.clientHeight;
+    const containerWidth = mainImg.value.clientWidth;
+    const containerHeight = mainImg.value.clientHeight;
 
-  // 计算最大允许偏移量（确保大图不会超出容器）
-  const maxX = Math.max(0, (imgWidth * scale.value - containerWidth) / 2);
-  const maxY = Math.max(0, (imgHeight * scale.value - containerHeight) / 2);
+    // 计算最大允许偏移量（确保大图不会超出容器）
+    const maxX = Math.max(0, (imgWidth * scale.value - containerWidth) / 2);
+    const maxY = Math.max(0, (imgHeight * scale.value - containerHeight) / 2);
 
-  // 限制 posX 和 posY 在合理范围内
-  posX.value = Math.max(-maxX, Math.min(maxX, posX.value));
-  posY.value = Math.max(-maxY, Math.min(maxY, posY.value));
-}, { immediate: true });
+    // 限制 posX 和 posY 在合理范围内
+    posX.value = Math.max(-maxX, Math.min(maxX, posX.value));
+    posY.value = Math.max(-maxY, Math.min(maxY, posY.value));
+}, {immediate: true});
 //下载
 // 实现 Download 功能
 function download() {
@@ -700,36 +705,37 @@ function goto_next(id) {
     user-select: none;
     transition: transform 0.3s ease;
 }
+
 .thumbnail-box {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 120px;
-  height: 120px;
-  border: 1px solid #ccc;
-  background: #fff;
-  z-index: 100;
-  overflow: hidden;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 120px;
+    height: 120px;
+    border: 1px solid #ccc;
+    background: #fff;
+    z-index: 100;
+    overflow: hidden;
 }
 
 .thumbnail {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
 }
 
 .thumbnail img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 .view-rect {
-  position: absolute;
-  border: 2px solid red;
-  cursor: move;
-  box-sizing: border-box;
+    position: absolute;
+    border: 2px solid red;
+    cursor: move;
+    box-sizing: border-box;
 }
 
 .left .bm {
@@ -932,7 +938,7 @@ p {
 .r-right .themeul li, .r-right .authorul li, .r-right .dynastyul li {
     list-style: none;
     flex: 1 1 200px;
-    max-width:200px ;
+    max-width: 200px;
     margin-right: 20px;
 }
 
@@ -941,13 +947,15 @@ p {
     height: auto;
     object-fit: cover;
 }
-.r-right .videoul li{
+
+.r-right .videoul li {
     list-style: none;
     flex: 1 1 200px;
     max-width: 400px;
     margin-right: 20px;
 }
-.r-right .videoul li video{
+
+.r-right .videoul li video {
     width: 100%;
     height: auto;
     object-fit: cover;
