@@ -141,11 +141,27 @@ const goToDetail = (id) => {
             </div>
             <el-empty v-else description="暂无数据"></el-empty>
         </el-tab-pane>
+<!--        <el-pagination layout="prev, pager, next" :total="1000"/>-->
     </el-tabs>
 </template>
 
-<style scoped>
+<style>
 .el-empty {
     --el-empty-padding: 10px 0;
 }
+
+.demo-tabs .custom-tabs-label .el-icon {
+    vertical-align: middle;
+}
+
+.demo-tabs .custom-tabs-label span {
+    vertical-align: middle;
+    margin-left: 4px;
+}
+
+.el-tabs--border-card > .el-tabs__header .el-tabs__item.is-active,
+.el-tabs--border-card > .el-tabs__header .el-tabs__item:hover {
+    color: black !important;
+}
+
 </style>

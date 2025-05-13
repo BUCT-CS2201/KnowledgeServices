@@ -11,12 +11,14 @@
                     :with-credentials="true"
                     style="text-align: center;margin: 20px auto"
                 >
-                    <img v-if="imageUrl" :src="imageUrl" class="avatar"/>
+                    <img v-if="hasAvatar" :src="imageUrl" class="avatar" @error="onImageError"/>
                     <el-avatar shape="square" v-else :size="100">user</el-avatar>
                 </el-upload>
                 <!--登出-->
                 <div style="text-align: center;margin: 10px auto;">
-                    <el-button @click="logout">登出</el-button>
+                    <el-button plain color="black" @click="logout"
+                               style="border-radius: var(--el-border-radius-small);">登出
+                    </el-button>
                 </div>
                 <!-- 信息展示 -->
                 <el-descriptions title="个人信息" :column="1" label-width="70px"
@@ -25,7 +27,7 @@
                     <el-descriptions-item label="手机号码">{{ maskPhone(userInfo.phone_number) }}</el-descriptions-item>
                     <el-descriptions-item label="身份证号">{{ maskIdNumber(userInfo.id_number) }}</el-descriptions-item>
                     <el-descriptions-item label="性别">
-                        {{ userInfo.gender === 1 ? '男' : userInfo.gender === 2 ? '女' : '无' }}
+                        {{ userInfo.gender === 1 ? '男' : userInfo.gender === 0 ? '女' : '无' }}
                     </el-descriptions-item>
                     <el-descriptions-item label="年龄">{{ userInfo.age || '无' }}</el-descriptions-item>
                     <el-descriptions-item label="地址">{{ userInfo.address || '无' }}</el-descriptions-item>
@@ -36,11 +38,13 @@
                 </el-descriptions>
                 <div style="text-align: center;margin-bottom: 50px">
                     <!-- 编辑信息 -->
-                    <el-button plain @click="openInfoDialog">
+                    <el-button color="black" plain @click="openInfoDialog"
+                               style="border-radius: var(--el-border-radius-small);">
                         编辑信息
                     </el-button>
                     <!-- 修改密码 -->
-                    <el-button plain @click="passVisible = true">
+                    <el-button color="black" @click="passVisible = true"
+                               style="border-radius: var(--el-border-radius-small);">
                         修改密码
                     </el-button>
                 </div>
@@ -68,8 +72,8 @@
                         </el-form-item>
                         <el-form-item label="性别：" prop="gender">
                             <el-radio-group v-model="infoForm.gender">
-                                <el-radio value="0">女</el-radio>
-                                <el-radio value="1">男</el-radio>
+                                <el-radio :label="0">女</el-radio>
+                                <el-radio :label="1">男</el-radio>
                             </el-radio-group>
                         </el-form-item>
                         <el-form-item label="地址：" prop="address">
@@ -87,8 +91,11 @@
                     </el-form>
                     <template #footer>
                         <div class="dialog-footer">
-                            <el-button @click="InfoDialogVisible = false">取消</el-button>
-                            <el-button type="primary" @click="submitInfoChange">
+                            <el-button @click="InfoDialogVisible = false" plain color="black"
+                                       style="border-radius: var(--el-border-radius-small);">取消
+                            </el-button>
+                            <el-button type="primary" @click="submitInfoChange" color="black"
+                                       style="border-radius: var(--el-border-radius-small);">
                                 确认
                             </el-button>
                         </div>
@@ -108,8 +115,12 @@
                     </el-form>
                     <template #footer>
                         <div class="dialog-footer">
-                            <el-button @click="passVisible = false">取消</el-button>
-                            <el-button type="primary" @click="submitPasswordChange">确认</el-button>
+                            <el-button @click="passVisible = false" plain color="black"
+                                       style="border-radius: var(--el-border-radius-small);">取消
+                            </el-button>
+                            <el-button type="primary" @click="submitPasswordChange" color="black"
+                                       style="border-radius: var(--el-border-radius-small);">确认
+                            </el-button>
                         </div>
                     </template>
                 </el-dialog>
@@ -194,6 +205,7 @@ const favoriteInfo = ref({})//用户收藏展示
 const likeInfo = ref({})//用户点赞展示
 const commentInfo = ref({})//用户评论展示
 const browseInfo = ref({})//用户浏览记录展示
+const hasAvatar = ref(true)
 
 // 上传成功后，强制刷新图片（避免缓存）
 const handleAvatarSuccess = () => {
@@ -201,6 +213,12 @@ const handleAvatarSuccess = () => {
     imageUrl.value = `http://localhost:5000/static/avatar/${user_id}.png?t=${Date.now()}`;
 };
 
+//头像加载失败
+function onImageError() {
+    hasAvatar.value = false
+}
+
+//数据渲染
 async function renderInfo() {
     try {
         const response = await axios.get(`http://localhost:5000/user_info/${user_id}`)
@@ -215,6 +233,7 @@ async function renderInfo() {
     }
 }
 
+//挂载
 onMounted(async () => {
     renderInfo();
 })
@@ -275,13 +294,14 @@ const openInfoDialog = async () => {
     infoForm.value = {
         name: data.name || '',
         description: data.description || '',
-        gender: data.gender !== null ? String(data.gender) : '',
+        gender: data.gender !== null ? Number(data.gender) : null,
         address: data.address || '',
-        age: data.age || '',
+        age: data.age || null,
         wechat: data.wechat || '',
         qq: data.qq || ''
     }
     InfoDialogVisible.value = true
+    console.log(infoForm.value)
 }
 
 // 提交编辑信息
@@ -310,18 +330,6 @@ const submitInfoChange = async () => {
 <style scoped>
 .el-upload {
     margin: 0 auto;
-}
-
-.el-menu--horizontal {
-    --el-menu-horizontal-height: 70px;
-    --el-menu-hover-text-color: grey;
-    --el-menu-hover-bg-color: white;
-}
-
-.home {
-    margin: auto 20px;
-    font-size: larger;
-    border-bottom: none !important;
 }
 
 .avatar-uploader .avatar {
@@ -374,20 +382,43 @@ const submitInfoChange = async () => {
     text-align: center;
 }
 
-.demo-tabs > .el-tabs__content {
-    padding: 32px;
-    color: #6b778c;
-    font-size: 32px;
-    font-weight: 600;
+.el-radio__input.is-checked .el-radio__inner {
+    background-color: black;
+    border-color: black;
 }
 
-.demo-tabs .custom-tabs-label .el-icon {
-    vertical-align: middle;
+.el-radio__input.is-checked + .el-radio__label {
+    color: black;
 }
 
-.demo-tabs .custom-tabs-label span {
-    vertical-align: middle;
-    margin-left: 4px;
+.el-radio__inner {
+    border-color: black;
+}
+
+:deep(.el-radio__input.is-checked .el-radio__inner) {
+    background-color: black;
+    border-color: black;
+}
+
+:deep(.el-radio__input.is-checked + .el-radio__label) {
+    color: black;
+}
+
+:deep(.el-radio__inner) {
+    border-color: black;
+}
+
+:deep(.el-radio__input:hover .el-radio__inner) {
+    border-color: black;
+}
+
+:deep(.el-radio__input.is-checked:hover .el-radio__inner) {
+    background-color: black;
+    border-color: black;
+}
+
+:deep(.el-radio__input:hover + .el-radio__label) {
+    color: black;
 }
 
 </style>
