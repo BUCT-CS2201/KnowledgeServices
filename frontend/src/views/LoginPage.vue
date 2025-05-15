@@ -57,7 +57,7 @@
 
 <script setup>
 import {onMounted, ref, inject} from 'vue'
-import {useRouter} from "vue-router";
+import {useRoute, useRouter} from "vue-router";
 import {ElMessage} from "element-plus";
 
 const formRef = ref(null)
@@ -68,6 +68,7 @@ const form = ref({
     password: '',
     phone_number: '',
 })
+const route = useRoute()
 
 const login = async () => {
     try {
@@ -92,7 +93,8 @@ const login = async () => {
                 message: '登录成功', type: data.status,
                 showClose: true, plain: false, grouping: true,
             })
-            router.push('/profile'); // 登录成功后跳转到个人信息页面
+            const redirectPath = route.query.redirect || '/home'
+            router.push(redirectPath)
         } else {
             //弹出错误消息
             ElMessage({

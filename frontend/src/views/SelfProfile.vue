@@ -11,8 +11,7 @@
                     :with-credentials="true"
                     style="text-align: center;margin: 20px auto"
                 >
-                    <img v-if="hasAvatar" :src="imageUrl" class="avatar" @error="onImageError"/>
-                    <el-avatar shape="square" v-else :size="100">user</el-avatar>
+                    <el-avatar shape="square" :size="100" :src="imageUrl" @error="onImageError">user</el-avatar>
                 </el-upload>
                 <!--登出-->
                 <div style="text-align: center;margin: 10px auto;">
@@ -33,7 +32,7 @@
                     <el-descriptions-item label="地址">{{ userInfo.address || '无' }}</el-descriptions-item>
                     <el-descriptions-item label="微信">{{ userInfo.wechat || '无' }}</el-descriptions-item>
                     <el-descriptions-item label="QQ">{{ userInfo.qq || '无' }}</el-descriptions-item>
-                    <el-descriptions-item label="描述"></el-descriptions-item>
+                    <el-descriptions-item label="简介"></el-descriptions-item>
                     <el-descriptions-item>{{ userInfo.description || '无' }}</el-descriptions-item>
                 </el-descriptions>
                 <div style="text-align: center;margin-bottom: 50px">
@@ -207,17 +206,6 @@ const commentInfo = ref({})//用户评论展示
 const browseInfo = ref({})//用户浏览记录展示
 const hasAvatar = ref(true)
 
-// 上传成功后，强制刷新图片（避免缓存）
-const handleAvatarSuccess = () => {
-    // 加时间戳避免缓存
-    imageUrl.value = `http://localhost:5000/static/avatar/${user_id}.png?t=${Date.now()}`;
-};
-
-//头像加载失败
-function onImageError() {
-    hasAvatar.value = false
-}
-
 //数据渲染
 async function renderInfo() {
     try {
@@ -228,9 +216,22 @@ async function renderInfo() {
         commentInfo.value = response.data.comments
         browseInfo.value = response.data.browsing_history
     } catch (error) {
-        ElMessage.error("获取用户信息失败")
+        ElMessage({
+            message: "获取用户信息失败", type: 'error',
+            showClose: true, plain: false, grouping: true,
+        })
         console.error(error)
     }
+}
+
+// 上传成功后，强制刷新图片（避免缓存）
+const handleAvatarSuccess = () => {
+    imageUrl.value = `http://localhost:5000/static/avatar/${user_id}.png?t=${Date.now()}`;
+};
+
+//头像加载失败
+function onImageError() {
+    hasAvatar.value = false
 }
 
 //挂载
@@ -263,7 +264,10 @@ const submitPasswordChange = async () => {
         await passwordFormRef.value.validate()
 
         if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword) {
-            ElMessage.error('两次密码不一致，请重新输入确认密码')
+            ElMessage({
+                message: '两次密码不一致，请重新输入确认密码', type: 'error',
+                showClose: true, plain: false, grouping: true,
+            })
             passwordForm.value.confirmPassword = ''
             return
         }
@@ -276,15 +280,24 @@ const submitPasswordChange = async () => {
         })
 
         if (response.data.status) {
-            ElMessage.success('密码修改成功！')
+            ElMessage({
+                message: '密码修改成功！', type: 'success',
+                showClose: true, plain: false, grouping: true,
+            })
             passVisible.value = false
             passwordForm.value.newPassword = ''
             passwordForm.value.confirmPassword = ''
         } else {
-            ElMessage.error(response.data.message || '密码修改失败')
+            ElMessage({
+                message: response.data.message || '密码修改失败', type: 'error',
+                showClose: true, plain: false, grouping: true,
+            })
         }
     } catch (err) {
-        ElMessage.error('提交失败：' + (err.response?.data?.message || err.message))
+        ElMessage({
+            message: '提交失败：' + (err.response?.data?.message || err.message) || '密码修改失败', type: 'error',
+            showClose: true, plain: false, grouping: true,
+        })
     }
 }
 
@@ -314,14 +327,23 @@ const submitInfoChange = async () => {
         })
 
         if (response.data.status === 'success') {
-            ElMessage.success('用户信息更新成功')
+            ElMessage({
+                message: '用户信息更新成功', type: 'success',
+                showClose: true, plain: false, grouping: true,
+            })
             InfoDialogVisible.value = false
         } else {
-            ElMessage.error(response.data.message || '更新失败')
+            ElMessage({
+                message: response.data.message || '更新失败', type: 'error',
+                showClose: true, plain: false, grouping: true,
+            })
         }
         renderInfo()
     } catch (err) {
-        ElMessage.error('请求失败：' + err.message)
+        ElMessage({
+            message: '请求失败：' + err.message, type: 'error',
+            showClose: true, plain: false, grouping: true,
+        })
     }
 }
 
@@ -330,12 +352,6 @@ const submitInfoChange = async () => {
 <style scoped>
 .el-upload {
     margin: 0 auto;
-}
-
-.avatar-uploader .avatar {
-    width: 100px;
-    height: 100px;
-    display: block;
 }
 
 .el-menu-popper-demo {
@@ -368,10 +384,6 @@ const submitInfoChange = async () => {
     position: relative;
     overflow: hidden;
     transition: var(--el-transition-duration-fast);
-}
-
-.avatar-uploader .el-upload:hover {
-    border-color: var(--el-color-primary);
 }
 
 .el-icon.avatar-uploader-icon {

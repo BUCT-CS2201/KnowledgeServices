@@ -316,9 +316,9 @@ async function detailRender(id) {
         views_count.value = relic_inform.views_count
         likes_count.value = relic_inform.likes_count
         videoData.value = video_data
-        console.log("videoData.value.video_url", videoData.value.video_url)
-        console.log(videoData.value.type)
-        if (videoData.value.video_url !== undefined) {
+        console.log("videoData.value.length", videoData.value.length)
+        console.log(videoData.value)
+        if (videoData.value.length > 0) {
             isVideo.value = true
         } else {
             isVideo.value = false
@@ -355,8 +355,8 @@ async function detailRender(id) {
     } catch (error) {
         // 显示错误信息给用户
         ElMessage({
-            message: error.response.statusText,
-            type: 'false',
+            message: error.response.statusText, type: 'false',
+            showClose: true, plain: false, grouping: true,
         })
     }
 }
@@ -557,9 +557,9 @@ function download() {
     const imageUrl = imageSrc.value;  // 获取当前图片的 URL
     if (!imageUrl) {
         ElMessage({
-            message: 'No image available for download',
-            type: 'error',
-        });
+            message: '没有可下载的图片', type: 'error',
+            showClose: true, plain: false, grouping: true,
+        })
         return;
     }
     const link = document.createElement('a');
@@ -582,22 +582,22 @@ function share() {
         navigator.share(shareData)
             .then(() => {
                 ElMessage({
-                    message: 'Shared successfully!',
-                    type: 'success',
-                });
+                    message: '分享成功', type: 'success',
+                    showClose: true, plain: false, grouping: true,
+                })
             })
             .catch((error) => {
                 ElMessage({
-                    message: 'Share failed: ' + error,
-                    type: 'error',
-                });
+                    message: '分享失败：' + error, type: 'error',
+                    showClose: true, plain: false, grouping: true,
+                })
             });
     } else {
         // 如果不支持 Web Share API，您可以提供一些替代方案
         ElMessage({
-            message: 'Your browser does not support sharing.',
-            type: 'warning',
-        });
+            message: '浏览器不支持分享', type: 'warning',
+            showClose: true, plain: false, grouping: true,
+        })
     }
 }
 

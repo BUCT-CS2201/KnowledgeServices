@@ -47,7 +47,10 @@ const loadTimeline = async () => {
 
         window.timeline = new window.TL.Timeline('timeline-embed', timelineData)
     } catch (err) {
-        ElMessage.error('加载时间线数据失败')
+        ElMessage({
+            message: '加载时间线数据失败', type: 'error',
+            showClose: true, plain: false, grouping: true,
+        })
         console.error(err)
     }
 }

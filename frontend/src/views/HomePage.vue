@@ -3,7 +3,7 @@
         <el-container direction="vertical" class="p-6">
 
             <!--搜索栏-->
-            <SearchBar @search="handleSearch" :onAddTag="addTag"></SearchBar>
+            <SearchBar @search="handleSearch" :onAddTag="addTag" :fetch="fetchArtifacts"></SearchBar>
 
             <!--高级搜索、popular、reset-->
             <div class="popularbox" style="margin: 10px auto;">
@@ -191,7 +191,6 @@ const fetchArtifacts = async () => {
     }
 }
 
-
 // 回到顶部逻辑
 const tableComponent = ref(null)
 
@@ -215,7 +214,7 @@ const switchShowPopular = () => {
 function addTag(tag, suppressFetch = false) {
     //排序互斥\限制条件互斥
     const sortOptions = ['时间：新-旧', '时间：旧-新', '名称：A-Z', '名称：Z-A']
-    const conditionOptions = ['仅限艺术家', '仅限标题', '仅限描述', '仅限类型', '仅限朝代']
+    const conditionOptions = ['仅限作者', '仅限标题', '仅限描述', '仅限类型', '仅限朝代', '仅限材料', '仅限尺寸']
     const uniquePrefixes = ['作者：', '名称：', '博物馆：', '类型：', '材料：', '朝代：', '之后：', '以前：']
 
     const isSortTag = sortOptions.includes(tag)

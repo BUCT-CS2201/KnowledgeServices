@@ -5,7 +5,8 @@ const searchQuery = ref('')
 
 const props = defineProps({
     len: Number,
-    onAddTag: Function
+    onAddTag: Function,
+    fetch: Function
 })
 
 const submitSearchQuery = () => {
@@ -13,6 +14,7 @@ const submitSearchQuery = () => {
         // 搜索内容作为标签，标签内容可以自定义前缀，如 "搜索：xxx"
         props.onAddTag('搜索：' + searchQuery.value.trim(), 'search')
     }
+    props.fetch();
 }
 
 </script>

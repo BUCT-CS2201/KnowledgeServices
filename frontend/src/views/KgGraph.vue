@@ -156,7 +156,10 @@ function renderGraph(data) {
         .call(drag(simulation))
         .on("click", (_, d) => {
             if (loading.value) {
-                ElMessage.warning("图谱加载中，请稍后");
+                ElMessage({
+                    message: "图谱加载中，请稍后", type: 'warning',
+                    showClose: true, plain: false, grouping: true,
+                })
                 return;
             }
             selectedNode.value = d;
@@ -279,7 +282,10 @@ function drag(simulation) {
 //缩放管理
 function zoom(factor) {
     if (loading.value) {
-        ElMessage.warning("图谱加载中，请稍后");
+        ElMessage({
+            message: "图谱加载中，请稍后", type: 'warning',
+            showClose: true, plain: false, grouping: true,
+        })
         return;
     }
     const svgEl = d3.select(svg.value);
@@ -289,7 +295,10 @@ function zoom(factor) {
 //保存图片
 function saveAs(type) {
     if (loading.value) {
-        ElMessage.warning("图谱加载中，请稍后");
+        ElMessage({
+            message: "图谱加载中，请稍后", type: 'warning',
+            showClose: true, plain: false, grouping: true,
+        })
         return;
     }
     const svgElement = svg.value;
