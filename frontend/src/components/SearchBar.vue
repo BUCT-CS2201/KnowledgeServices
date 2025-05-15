@@ -1,5 +1,5 @@
 <script setup>
-import {defineProps, ref} from "vue";
+import {defineProps, ref, defineEmits, defineExpose} from "vue";
 
 const searchQuery = ref('')
 
@@ -9,14 +9,29 @@ const props = defineProps({
     fetch: Function
 })
 
+defineEmits(['update:searchQuery'])
+
 const submitSearchQuery = () => {
     if (searchQuery.value.trim() !== '') {
         // 搜索内容作为标签，标签内容可以自定义前缀，如 "搜索：xxx"
         props.onAddTag('搜索：' + searchQuery.value.trim(), 'search')
     }
-    props.fetch();
+    props.fetch(true);
 }
 
+const handleLimitClick = (field) => {
+    if (searchQuery.value.trim() !== '') {
+        props.onAddTag('搜索：' + searchQuery.value.trim(), 'search')
+    }
+    props.onAddTag('仅限' + field)
+    props.fetch(true)
+}
+
+const resetSearchQuery = () => {
+    searchQuery.value = ''
+}
+
+defineExpose({resetSearchQuery})
 </script>
 
 <template>
@@ -42,13 +57,13 @@ const submitSearchQuery = () => {
                     </span>
                     <template #dropdown>
                         <el-dropdown-menu>
-                            <el-dropdown-item @click="() => props.onAddTag('仅限作者')">作者</el-dropdown-item>
-                            <el-dropdown-item @click="() => props.onAddTag('仅限标题')">标题</el-dropdown-item>
-                            <el-dropdown-item @click="() => props.onAddTag('仅限描述')">描述</el-dropdown-item>
-                            <el-dropdown-item @click="() => props.onAddTag('仅限类型')">类型</el-dropdown-item>
-                            <el-dropdown-item @click="() => props.onAddTag('仅限朝代')">朝代</el-dropdown-item>
-                            <el-dropdown-item @click="() => props.onAddTag('仅限材料')">材料</el-dropdown-item>
-                            <el-dropdown-item @click="() => props.onAddTag('仅限尺寸')">尺寸</el-dropdown-item>
+                            <el-dropdown-item @click="handleLimitClick('作者')">作者</el-dropdown-item>
+                            <el-dropdown-item @click="handleLimitClick('标题')">标题</el-dropdown-item>
+                            <el-dropdown-item @click="handleLimitClick('描述')">描述</el-dropdown-item>
+                            <el-dropdown-item @click="handleLimitClick('类型')">类型</el-dropdown-item>
+                            <el-dropdown-item @click="handleLimitClick('朝代')">朝代</el-dropdown-item>
+                            <el-dropdown-item @click="handleLimitClick('材料')">材料</el-dropdown-item>
+                            <el-dropdown-item @click="handleLimitClick('尺寸')">尺寸</el-dropdown-item>
                         </el-dropdown-menu>
                     </template>
                 </el-dropdown>

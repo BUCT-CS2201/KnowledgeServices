@@ -213,6 +213,11 @@ def search_artifacts():
     sort = request.args.get('sort', '').strip()
     condition = request.args.get('condition', '').strip()
     popular = request.args.getlist('popular')
+    page = int(request.args.get("page", 1))
+    page_size = int(request.args.get("page_size", 20))
+    start = (page - 1) * page_size
+    end = start + page_size
+    print(f"page={page}, page_size={page_size}, start={start}")
 
     # 高级搜索字段
     author = request.args.get('author')
@@ -300,7 +305,11 @@ def search_artifacts():
     if sort in sort_dict:
         sql += sort_dict[sort]
 
-    # print(f"sql: {sql}", f"params: {params}")
+    # 分页
+    sql += " limit %s offset %s"
+    params.extend([page_size, start])
+
+    print(f"sql: {sql}", f"params: {params}")
 
     try:
         with db.cursor() as cursor:

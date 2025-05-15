@@ -31,7 +31,7 @@ defineExpose({tableWrapper})
                     </div>
                 </template>
             </el-table-column>
-            <el-table-column label="名称" width="150">
+            <el-table-column label="名称" width="180">
                 <template #default="{ row }">
                             <span style="cursor: pointer" @click="goToDetail(row.id)">
                                 {{ row.name }}
@@ -52,7 +52,7 @@ defineExpose({tableWrapper})
             </el-table-column>
             <el-table-column prop="size" label="大小" width="150">
             </el-table-column>
-            <el-table-column prop="museum" label="博物馆" width="150"></el-table-column>
+            <el-table-column prop="museum" label="博物馆"></el-table-column>
         </el-table>
     </div>
 </template>

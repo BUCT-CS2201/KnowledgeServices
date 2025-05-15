@@ -3,7 +3,7 @@
         <el-container direction="vertical" class="p-6">
 
             <!--搜索栏-->
-            <SearchBar @search="handleSearch" :onAddTag="addTag" :fetch="fetchArtifacts"></SearchBar>
+            <SearchBar ref="searchBarRef" :onAddTag="addTag" :fetch="fetchArtifacts"></SearchBar>
 
             <!--高级搜索、popular、reset-->
             <div class="popularbox" style="margin: 10px auto;">
@@ -48,12 +48,17 @@
             </SearchModal>
 
             <!--grid/table切换栏-->
-            <GridTable :len="artifacts.length" ref="GridTableRef" :onAddTag="addTag"></GridTable>
+            <GridTable :len="artifacts.length" ref="GridTableRef" :onAddTag="addTag" :isgrid="isGridMode"
+                       @update:isgrid="val => isGridMode = val"/>
 
-            <!--栅格展示视图-->
-            <ArtifactGrid v-if="isgrid" :artifacts="artifacts"></ArtifactGrid>
-            <!--表格展示视图-->
-            <ArtifactTable v-else ref="tableComponent" :artifacts="artifacts"></ArtifactTable>
+            <div v-infinite-scroll="fetchArtifacts"
+                 :infinite-scroll-disabled="loading||!hasMore||artifacts.length === 0"
+                 infinite-scroll-distance="10">
+                <!--栅格展示视图-->
+                <ArtifactGrid v-if="isGridMode" :artifacts="artifacts"/>
+                <!--表格展示视图-->
+                <ArtifactTable v-else ref="tableComponent" :artifacts="artifacts"/>
+            </div>
 
             <!--搜索结果为空-->
             <div v-if="artifacts.length === 0 && searched" class="text-gray-500" style="margin: 0 auto">
@@ -80,7 +85,7 @@
 </template>
 
 <script setup>
-import {ref, onMounted, computed} from 'vue'
+import {ref, onMounted} from 'vue'
 import axios from 'axios'
 import SearchBar from '@/components/SearchBar.vue'
 import ArtifactGrid from "@/components/ArtifactGrid.vue";
@@ -90,36 +95,49 @@ import {ElMessage} from "element-plus";
 import qs from 'qs';
 import SearchModal from "@/components/SearchModal.vue";
 
-const searchQuery = ref('')
-const artifacts = ref([])
-const searched = ref(false)
+const artifacts = ref([])//文物列表
+const searched = ref(false)//是否搜索
 const GridTableRef = ref(true)
-const isShowPop = ref(false)
-const selectedTags = ref([])
-const dialogVisible = ref(false)
+const isGridMode = ref(true)//是否使用栅格视图
+const isShowPop = ref(false)//热门显示
+const selectedTags = ref([])//标签数组
+const dialogVisible = ref(false)//高级搜索全屏对话框
+const searchBarRef = ref(true)
 
-//控制栅格/表格展示
-const isgrid = computed(() => {
-    return GridTableRef.value.isgrid ?? true;
-});
-
-//获取搜索内容
-const handleSearch = (query) => {
-    searchQuery.value = query
-    fetchArtifacts(query)
-}
+//分页、懒加载逻辑
+const page = ref(1)
+const pageSize = 20
+const hasMore = ref(true)
+const loading = ref(false)
 
 //挂载
 onMounted(() => {
-    fetchArtifacts();
+    fetchArtifacts(true);
     // 检查 URL Hash，如果包含 #table 则强制表格视图
     if (window.location.hash === '#table') {
-        isgrid.value = false;
+        isGridMode.value = false;
+    } else {
+        isGridMode.value = true;
     }
 });
 
 //获取文物信息
-const fetchArtifacts = async () => {
+const fetchArtifacts = async (reset = false) => {
+    //清空旧数据并重新加载
+    if (reset) {
+        page.value = 1;
+        artifacts.value = [];
+        hasMore.value = true;
+    }
+
+    if (loading.value || !hasMore.value) return;
+
+    console.log("page", page.value)
+    console.log("loading", loading.value)
+    console.log("hasMore", hasMore.value)
+
+    loading.value = true
+
     searched.value = true
     //普通搜索
     const sortOptions = ['时间：新-旧', '时间：旧-新', '名称：A-Z', '名称：Z-A']
@@ -138,6 +156,8 @@ const fetchArtifacts = async () => {
         dynasty: '',
         matrials: '',
         popular: [],
+        page: page.value,
+        page_size: pageSize,
     }
 
     //处理普通搜索标签
@@ -181,19 +201,28 @@ const fetchArtifacts = async () => {
             params: queryParams,
             paramsSerializer: params => qs.stringify(params, {arrayFormat: 'repeat'})
         })
-        artifacts.value = response.data.results
+        const newResults = response.data.results
+        //是否加载完毕
+        if (newResults.length < pageSize) {
+            hasMore.value = false;
+        }
+
+        artifacts.value = [...artifacts.value, ...newResults]
+        page.value++;
     } catch (error) {
         ElMessage({
             message: '无法获取文物信息', type: 'error',
             showClose: true, plain: true, grouping: true,
         })
-        console.error('Error fetching artifacts:', error)
+    } finally {
+        loading.value = false;
     }
 }
 
 // 回到顶部逻辑
 const tableComponent = ref(null)
 
+// 回到顶部逻辑
 const scrollToTop = () => {
     window.scrollTo({top: 0, behavior: 'smooth'})
     const wrapper = tableComponent.value?.tableWrapper
@@ -242,24 +271,29 @@ function addTag(tag, suppressFetch = false) {
         selectedTags.value.push(tag)
     }
     if (!suppressFetch) {
-        fetchArtifacts();
+        fetchArtifacts(true);
     }
 }
 
 // 移除标签
 function removeTag(tag) {
     selectedTags.value = selectedTags.value.filter(t => t !== tag);
-    fetchArtifacts();
+    fetchArtifacts(true);
 }
 
+//重置标签
 function reset() {
     selectedTags.value = [];
-    fetchArtifacts();
+    if (searchBarRef.value?.resetSearchQuery) {
+        searchBarRef.value.resetSearchQuery()
+    }
+    fetchArtifacts(true);
 }
 
+//高级搜索标签添加
 function handleAddTags(tags) {
     tags.forEach(tag => addTag(tag, true))
-    fetchArtifacts()
+    fetchArtifacts(true)
 }
 
 </script>

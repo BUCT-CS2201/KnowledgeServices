@@ -29,8 +29,8 @@ const goToDetail = (id) => {
                           alt="artifact image"></el-image>
                 <el-empty v-else description="无图片" :image-size=100></el-empty>
                 <el-space direction="vertical" alignment="flex-start">
-                    <el-text size="large" tag="b" style="color: black">{{ artifact.type }}</el-text>
-                    <el-text tag="b">{{ artifact.matrials }} &nbsp;&nbsp; {{ artifact.dynasty }}</el-text>
+                    <el-text size="large" tag="b" style="color: black">{{ artifact.name }}</el-text>
+                    <el-text tag="b">{{ artifact.type }} &nbsp;&nbsp; {{ artifact.dynasty }}</el-text>
                     <el-text>{{ artifact.date }}</el-text>
                 </el-space>
 

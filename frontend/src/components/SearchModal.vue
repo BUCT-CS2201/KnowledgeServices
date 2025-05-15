@@ -49,7 +49,8 @@ const handleSearch = () => {
             </el-form-item>
             <el-form-item label="时间">
                 <el-col :span="3">
-                    <el-input-number placeholder="在...之后" v-model="afterYear" type="number" :min="0"/>
+                    <div style="text-align: center">在...之后</div>
+                    <el-input-number controls-position="right" v-model="afterYear" type="number" :min="0"/>
                 </el-col>
                 <el-col :span="1"></el-col>
                 <el-col :span="4">
@@ -59,7 +60,8 @@ const handleSearch = () => {
                     </el-radio-group>
                 </el-col>
                 <el-col :span="3">
-                    <el-input-number :min="0" placeholder="在...之前" v-model="beforeYear" type="number"/>
+                    <div style="text-align: center">在...之前</div>
+                    <el-input-number controls-position="right" :min="0" v-model="beforeYear" type="number"/>
                 </el-col>
                 <el-col :span="1"></el-col>
                 <el-col :span="4">

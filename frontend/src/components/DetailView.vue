@@ -76,9 +76,10 @@
                         <div class="m-content">
                             <h1>{{ name }}</h1>
                             <h3>{{ entry_time }}</h3>
-                            <h1>{{ author }}</h1>
-                            <p style="text-decoration: underline;">{{ dynasty }}</p>
-                            <p>{{ matrials }}/{{ type }}</p>
+                            <h1>作者：{{ author }}</h1>
+                            <p style="text-decoration: underline;">朝代：{{ dynasty }}</p>
+                            <p>材料：{{ matrials }} </p>
+                            <p>类型：{{ type }}</p>
                             <p style="text-decoration: underline;">{{ size }}</p>
                             <p>{{ location }}</p>
                         </div>

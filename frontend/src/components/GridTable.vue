@@ -1,27 +1,22 @@
 <script setup>
-import {defineProps, ref, defineExpose} from "vue";
-
-const isgrid = ref(true)
+import {defineProps, defineEmits} from "vue";
 
 const props = defineProps({
-  len: Number,
-  onAddTag: Function
+    len: Number,
+    onAddTag: Function,
+    isgrid: Boolean
 })
 
-defineExpose({
-    isgrid
-})
+const emit = defineEmits(['update:isgrid'])
 
 //切换表格/栅格视图
 const switch2Table = () => {
-    isgrid.value = false;
-    localStorage.setItem('viewMode', 'table');
+    emit('update:isgrid', false);
     window.location.hash = 'table'; // 添加 #table
 };
 
 const switch2Grid = () => {
-    isgrid.value = true;
-    localStorage.setItem('viewMode', 'grid');
+    emit('update:isgrid', true);
     window.location.hash = ''; // 移除 Hash（或改为 #grid）
 };
 
@@ -50,13 +45,13 @@ const switch2Grid = () => {
                 </template>
             </el-dropdown>
         </el-col>
-        <el-col :span="2" @click="switch2Table()" :class="['table', isgrid === false ? 'active' : 'inactive']">
+        <el-col :span="2" @click="switch2Table()" :class="['table', props.isgrid ? 'inactive' : 'active']">
             表格
             <el-icon>
                 <Operation/>
             </el-icon>
         </el-col>
-        <el-col :span="2" @click="switch2Grid()" :class="['grid', isgrid === true ? 'active' : 'inactive']">栅格
+        <el-col :span="2" @click="switch2Grid()" :class="['grid', props.isgrid ? 'active' : 'inactive']">栅格
             <el-icon>
                 <Menu/>
             </el-icon>
