@@ -3,11 +3,11 @@
         <div class="main">
             <div class="left" ref="leftSide">
                 <div class="l-img">
-                    <img v-if="imageSrc" :src="imageSrc" :style="imageStyle" alt="">
+                    <ArtifactViewer v-if="imageSrc" :image-url="imageSrc" alt="图片加载失败" ref="viewerComponent"/>
                     <el-empty v-else description="无图片"/>
                 </div>
 
-                <div class="bm" ref="leftBm">
+                <div class="bm" ref="leftBm" v-if="viewerComponent">
                     <ul>
                         <li @click="zoomIn" style="cursor: pointer;">
                             <h5>放大</h5>
@@ -19,6 +19,12 @@
                             <h5>缩小</h5>
                             <el-icon>
                                 <ZoomOut/>
+                            </el-icon>
+                        </li>
+                        <li @click="toggleFullscreen" style="cursor: pointer;">
+                            <h5>全屏</h5>
+                            <el-icon>
+                                <FullScreen/>
                             </el-icon>
                         </li>
                         <li @click="updatelike" style="cursor:pointer;">
@@ -226,10 +232,11 @@
 </template>
 
 <script setup name="DetailView">
-import {ref, onMounted, watch, nextTick, onUnmounted, computed} from 'vue'
+import {ref, onMounted, watch, nextTick, onUnmounted} from 'vue'
 import axios from 'axios'
 import {ElMessage} from 'element-plus'
 import {useRoute, useRouter} from 'vue-router'
+import ArtifactViewer from "@/components/ArtifactViewer.vue";
 
 const route = useRoute()
 let id = route.params.id
@@ -261,6 +268,10 @@ let isVideo = ref(false)
 let islike = ref(false)
 //判断是否收藏
 let isFav = ref(false)
+
+//放大镜组件
+const viewerComponent = ref(null)
+
 // 页面打开渲染图片
 // 父组件给子组件image_id
 //根据所给的image_id查找url，根据relic_id查找到详细信息
@@ -389,15 +400,16 @@ const thumbStart = ref({x: 0, y: 0})
 const imgElement = ref(null);
 const mainImg = ref(null);
 const thumbBox = ref(null);
-const imageStyle = computed(() => ({
-    transform: `scale(${scale.value}) translate(${posX.value}px, ${posY.value}px)`
-}))
 
 const zoomIn = () => {
-    scale.value = Math.min(scale.value + 0.1, 5)
+    viewerComponent.value?.zoomIn()
 }
 const zoomOut = () => {
-    scale.value = Math.max(scale.value - 0.1, 0.5)
+    viewerComponent.value?.zoomOut()
+}
+
+const toggleFullscreen = () => {
+  viewerComponent.value?.toggleFullScreen()
 }
 
 const onThumbDrag = (event) => {
@@ -654,7 +666,7 @@ function goto_next(id) {
     justify-content: space-evenly;
     align-items: center;
     padding: 0;
-    margin-top: 20px;
+    margin-top: 5px;
 }
 
 .left .bm ul li {

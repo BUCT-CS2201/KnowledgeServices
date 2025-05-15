@@ -151,7 +151,8 @@ def get_timeline_data():
         join museum m on cr.museum_id = m.museum_id
         LEFT JOIN relic_image ri ON cr.relic_id = ri.relic_id
         WHERE cr.entry_time IS NOT NULL
-        ORDER BY cr.entry_time ASC;
+        ORDER BY cr.entry_time ASC
+        LIMIT 300
     """
     cursor.execute(sql)
     rows = cursor.fetchall()
@@ -309,7 +310,7 @@ def search_artifacts():
     sql += " limit %s offset %s"
     params.extend([page_size, start])
 
-    print(f"sql: {sql}", f"params: {params}")
+    # print(f"sql: {sql}", f"params: {params}")
 
     try:
         with db.cursor() as cursor:

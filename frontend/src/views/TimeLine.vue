@@ -25,7 +25,7 @@ const loadTimeline = async () => {
                     year: item.year,
                 },
                 text: {
-                    headline: item.type,
+                    headline: item.name,
                     text: `
                         <p><strong>描述：</strong> ${item.description || '无'}</p>
                         <p><strong>博物馆：</strong> ${item.museum}</p>
