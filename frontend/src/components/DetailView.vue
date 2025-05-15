@@ -1,31 +1,10 @@
 <template>
     <div class="detail">
         <div class="main">
-            <div class="left" ref="leftSide" @wheel.prevent="onWheel" @mousedown="startDrag" @mousemove="onDrag"
-                 @mouseup="endDrag" @mouseleave="endDrag">
-                <div class="l-img" ref="mainImg" :style="{ cursor: isDragging ? 'grabbing' : 'grab' }">
-                    <div class="image-container" ref="imageContainer">
-
-                    </div>
-                    <img v-if="imageSrc" :src="imageSrc" :style="imageStyle" alt="" ref="imgElement"
-                         @mousedown="startDrag"
-                         @mousemove="onDrag"
-                         @mouseup="endDrag"
-                         @mouseleave="endDrag">
+            <div class="left" ref="leftSide">
+                <div class="l-img">
+                    <img v-if="imageSrc" :src="imageSrc" :style="imageStyle" alt="">
                     <el-empty v-else description="无图片"/>
-                    <!-- 放大时的局部显示框 -->
-                    <div v-if="scale > 1" class="zoom-rect" :style="zoomRectStyle"></div>
-                </div>
-                <!-- 缩略图预览框 -->
-                <div v-if="imageSrc" class="thumbnail-box">
-                    <div class="thumbnail" ref="thumbBox">
-                        <img :src="imageSrc"/>
-                        <div
-                            class="view-rect"
-                            :style="thumbnailRectStyle"
-                            @mousedown.prevent.stop="startThumbDrag"
-                        ></div>
-                    </div>
                 </div>
 
                 <div class="bm" ref="leftBm">
@@ -373,9 +352,7 @@ onMounted(() => {
     window.scrollTo(0, 0);
     detailRender(id);
 })
-// function isLike() {
-//     islike.value=!islike.value
-// }
+
 //点击点赞like+1
 function updatelike() {
     if (islike.value) {
@@ -404,25 +381,9 @@ function updatefavorite() {
     isFav.value = !isFav.value
 }
 
-//放大
-// function zoomIn() {
-//     if (scale.value <= 3) {
-//         scale.value += 0.2
-//         console.log(scale.value)
-//     }
-// }
-
-//缩小
-// function zoomOut() {
-//     if (scale.value > 1) {
-//         scale.value -= 0.2
-//     }
-// }
 const scale = ref(1)
 const posX = ref(0)
 const posY = ref(0)
-const isDragging = ref(false)
-const dragStart = ref({x: 0, y: 0})
 const isThumbDragging = ref(false)
 const thumbStart = ref({x: 0, y: 0})
 const imgElement = ref(null);
@@ -431,38 +392,7 @@ const thumbBox = ref(null);
 const imageStyle = computed(() => ({
     transform: `scale(${scale.value}) translate(${posX.value}px, ${posY.value}px)`
 }))
-const thumbnailRectStyle = computed(() => {
-    if (!imgElement.value || !thumbBox.value) {
-        return {};
-    }
 
-    const imgWidth = imgElement.value.clientWidth;
-    const imgHeight = imgElement.value.clientHeight;
-    const thumbWidth = thumbBox.value.clientWidth;
-    const thumbHeight = thumbBox.value.clientHeight;
-
-    // 计算红框的大小（缩略图上的可视区域）
-    const rectWidth = (thumbWidth / scale.value);
-    const rectHeight = (thumbHeight / scale.value);
-
-    // 计算红框的位置（映射 posX 和 posY 到缩略图坐标系）
-    // 大图的偏移量 (posX, posY) 是相对于其原始尺寸的，缩略图需要按比例映射
-    let rectLeft = (-posX.value / imgWidth) * thumbWidth;
-    let rectTop = (-posY.value / imgHeight) * thumbHeight;
-
-    // 边界检查：确保红框不会超出缩略图
-    rectLeft = Math.max(0, Math.min(thumbWidth - rectWidth, rectLeft));
-    rectTop = Math.max(0, Math.min(thumbHeight - rectHeight, rectTop));
-
-    return {
-        width: `${rectWidth}px`,
-        height: `${rectHeight}px`,
-        left: `${rectLeft}px`,
-        top: `${rectTop}px`,
-        border: '2px solid red',
-        position: 'absolute',
-    };
-});
 const zoomIn = () => {
     scale.value = Math.min(scale.value + 0.1, 5)
 }
@@ -470,35 +400,6 @@ const zoomOut = () => {
     scale.value = Math.max(scale.value - 0.1, 0.5)
 }
 
-const startDrag = (event) => {
-    isDragging.value = true;
-    dragStart.value = {x: event.clientX, y: event.clientY};
-};
-
-const onWheel = (event) => {
-    const delta = event.deltaY
-    if (delta < 0) {
-        zoomIn()
-    } else {
-        zoomOut()
-    }
-}
-
-const onDrag = (event) => {
-    if (!isDragging.value) return
-    posX.value += (event.clientX - dragStart.value.x) / scale.value
-    posY.value += (event.clientY - dragStart.value.y) / scale.value
-    dragStart.value = {x: event.clientX, y: event.clientY}
-}
-const endDrag = () => {
-    isDragging.value = false
-}
-const startThumbDrag = (event) => {
-    isThumbDragging.value = true
-    thumbStart.value = {x: event.clientX, y: event.clientY}
-    document.addEventListener('mousemove', onThumbDrag)
-    document.addEventListener('mouseup', endThumbDrag)
-}
 const onThumbDrag = (event) => {
     if (!isThumbDragging.value || !imgElement.value || !thumbBox.value) return;
 
