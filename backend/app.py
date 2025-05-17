@@ -9,7 +9,6 @@ from neo4j import GraphDatabase
 from flask_cors import CORS
 from flask_caching import Cache
 from PIL import Image
-from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
@@ -109,6 +108,42 @@ def graph_data():
     keyword = request.args.get("keyword", default=None)
     return jsonify(fetch_graph_data(keyword))
 
+# 知识图谱搜索自动填充
+@app.route('/search-suggestions')
+def search_suggestions():
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # 获取各维度建议词
+    suggestions = {
+        '朝代': [],
+        '材质': [],
+        '博物馆': [],
+        '类型': [],
+        '名称': [],
+        '作者': []
+    }
+    
+    # 查询各维度数据
+    cursor.execute("SELECT DISTINCT dynasty FROM cultural_relic WHERE dynasty IS NOT NULL order by rand() LIMIT 15")
+    suggestions['朝代'] = [row['dynasty'] for row in cursor.fetchall()]
+    
+    cursor.execute("SELECT DISTINCT matrials FROM cultural_relic WHERE matrials IS NOT NULL order by rand() LIMIT 15")
+    suggestions['材质'] = [row['matrials'] for row in cursor.fetchall()]
+    
+    cursor.execute("SELECT DISTINCT museum_name FROM museum order by rand() LIMIT 15")
+    suggestions['博物馆'] = [row['museum_name'] for row in cursor.fetchall()]
+    
+    cursor.execute("SELECT DISTINCT type FROM cultural_relic WHERE type IS NOT NULL order by rand() LIMIT 15")
+    suggestions['类型'] = [row['type'] for row in cursor.fetchall()]
+    
+    cursor.execute("SELECT DISTINCT name FROM cultural_relic WHERE name IS NOT NULL order by rand() LIMIT 15")
+    suggestions['名称'] = [row['name'] for row in cursor.fetchall()]
+    
+    cursor.execute("SELECT DISTINCT author FROM cultural_relic WHERE author IS NOT NULL order by rand() LIMIT 15")
+    suggestions['作者'] = [row['author'] for row in cursor.fetchall()]
+    
+    return jsonify(suggestions)
 
 # 登录
 @app.route('/login', methods=['POST'])

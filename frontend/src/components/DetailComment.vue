@@ -7,7 +7,7 @@
                     <span>评论</span>
                     <span>
                         <el-icon>
-                          <Comment/>
+                            <Comment />
                         </el-icon>
                     </span>
                 </div>
@@ -18,13 +18,8 @@
             <el-card class="comment-card" shadow="never" v-for="comment in comments" :key="comment.comment_id">
                 <div class="comment-wrapper">
                     <!-- 头像 -->
-                    <el-avatar
-                        class="comment-avatar"
-                        shape="square"
-                        :size="40"
-                        :icon="UserFilled"
-                        :src="`http://localhost:5000/static/avatar/${comment.user_id}.png`"
-                    />
+                    <el-avatar class="comment-avatar" shape="square" :size="40" :icon="UserFilled"
+                        :src="`http://localhost:5000/static/avatar/${comment.user_id}.png`" />
                     <!-- 右侧文字和图片区域 -->
                     <div class="comment-content">
                         <!-- 用户名 -->
@@ -36,15 +31,10 @@
                         </div>
 
                         <!-- 评论图片 -->
-                        <div class="comment-images" v-if="comment.images.length>0">
-                            <el-image
-                                v-for="img in comment.images"
-                                :key="img"
-                                :src="`${img}`"
-                                fit="cover"
+                        <div class="comment-images" v-if="comment.images.length > 0">
+                            <el-image v-for="img in comment.images" :key="img" :src="`${img}`" fit="cover"
                                 style="width: 80px; height: 80px; margin: 4px; border-radius: 8px"
-                                :preview-src-list="comment.images"
-                            />
+                                :preview-src-list="comment.images" />
                         </div>
                         <!-- 操作按钮 -->
                         <div class="comment-actions">
@@ -67,34 +57,21 @@
                 <el-form>
                     <el-form-item>
                         <!-- 文本输入 -->
-                        <el-input
-                            type="textarea"
-                            v-model="message"
-                            :rows="6"
-                            placeholder="这一刻的想法..."
-                        ></el-input>
+                        <el-input type="textarea" v-model="message" :rows="6" placeholder="这一刻的想法..."></el-input>
                     </el-form-item>
                     <el-form-item>
                         <!-- 图片上传 -->
-                        <el-upload
-                            action=""
-                            list-type="picture-card"
-                            :auto-upload="false"
-                            v-model:file-list="fileList"
-                            :on-change="handleChange"
-                            :on-remove="handleRemove"
-                            :limit="9"
-                            multiple
-                            :disabled="fileList.length>=9"
-                        >
+                        <el-upload action="" list-type="picture-card" :auto-upload="false" v-model:file-list="fileList"
+                            :on-change="handleChange" :on-remove="handleRemove" :limit="9" multiple
+                            :disabled="fileList.length >= 9">
                             <el-icon>
-                                <Plus/>
+                                <Plus />
                             </el-icon>
                         </el-upload>
                     </el-form-item>
                 </el-form>
                 <template #footer>
-                    <el-button @click="DialogVisible=false">取消</el-button>
+                    <el-button @click="DialogVisible = false">取消</el-button>
                     <!-- 提交按钮 -->
                     <el-button type="primary" @click="submitComment">评论</el-button>
                 </template>
@@ -104,16 +81,11 @@
                 <el-form>
                     <el-form-item>
                         <!-- 文本输入 -->
-                        <el-input
-                            type="textarea"
-                            v-model="message"
-                            :rows="6"
-                            placeholder="这一刻的想法..."
-                        ></el-input>
+                        <el-input type="textarea" v-model="message" :rows="6" placeholder="这一刻的想法..."></el-input>
                     </el-form-item>
                 </el-form>
                 <template #footer>
-                    <el-button @click="ReplyCommentVisible=false">取消</el-button>
+                    <el-button @click="ReplyCommentVisible = false">取消</el-button>
                     <!-- 提交按钮 -->
                     <el-button type="primary" @click="submitReply">评论</el-button>
                 </template>
@@ -123,11 +95,11 @@
 </template>
 
 <script setup>
-import {onMounted, ref, defineProps} from 'vue'
-import {ElMessage} from 'element-plus'
+import { onMounted, ref, defineProps, watch } from 'vue'
+import { ElMessage } from 'element-plus'
 import axios from "axios";
-import {UserFilled} from "@element-plus/icons-vue";
-import {useRoute, useRouter} from "vue-router";
+import { UserFilled } from "@element-plus/icons-vue";
+import { useRoute, useRouter } from "vue-router";
 
 const props = defineProps({
     relic_id: {
@@ -145,6 +117,11 @@ const ReplyCommentVisible = ref(false)
 const router = useRouter()
 const route = useRoute()
 const currentReplyCommentId = ref(null)
+
+// 监听路由变化
+watch(() => props.relic_id, async (newRelicId) => {
+    await renderComments(newRelicId);
+});
 
 //评论渲染
 async function renderComments(relic_id) {
@@ -172,7 +149,7 @@ const userComment = () => {
         })
         router.push({
             path: '/login',
-            query: {redirect: route.fullPath}
+            query: { redirect: route.fullPath }
         })
     }
 }
@@ -241,7 +218,7 @@ const submitComment = async () => {
 const submitReply = async () => {
     const res = await fetch('http://localhost:5000/user/reply', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             parent_id: currentReplyCommentId.value,
             user_id: sessionStorage.getItem('user_id'),
@@ -250,7 +227,7 @@ const submitReply = async () => {
     })
     const data = await res.json()
     if (data.status === 'success') {
-        ElMessage.success("回复成功")
+        ElMessage.success("回复成功，请等待审核")
         ReplyCommentVisible.value = false
         message.value = ''
         currentReplyCommentId.value = null
@@ -272,7 +249,7 @@ const replyComment = (commentId) => {
         })
         router.push({
             path: '/login',
-            query: {redirect: route.fullPath}
+            query: { redirect: route.fullPath }
         })
     }
 }
@@ -347,5 +324,4 @@ const replyComment = (commentId) => {
 .sub-comment-content {
     line-height: 1.5;
 }
-
 </style>
