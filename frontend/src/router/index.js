@@ -8,7 +8,6 @@ import HomePage from "@/views/HomePage.vue";
 import SelfProfile from "@/views/SelfProfile.vue";
 import RegisterPage from "@/views/RegisterPage.vue";
 import DetailImformation from '@/views/DetailImformation.vue';
-import {ElMessage} from "element-plus";
 
 const routes = [
     {path: '/', redirect: '/home'},
@@ -25,24 +24,6 @@ const routes = [
 const router = createRouter({
     history: createWebHistory(),
     routes,
-})
-
-//全局前置路由守卫
-router.beforeEach((to, from, next) => {
-    const isLoggedIn = sessionStorage.getItem('isLoggedIn') === 'true'
-    if (to.meta.requiresAuth && !isLoggedIn) {
-        ElMessage({
-            message: '请先登录后再操作',
-            type: 'warning',
-            showClose: true, plain: false, grouping: true,
-        })
-        next({
-            path: '/login',
-            query: {redirect: to.fullPath}
-        })
-    } else {
-        next()
-    }
 })
 
 export default router

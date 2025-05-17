@@ -5,7 +5,7 @@
 </template>
 
 <script setup>
-import {ref, onMounted, defineExpose, defineProps} from 'vue'
+import {ref, onMounted, defineExpose, defineProps, onUnmounted, watch} from 'vue'
 import OpenSeadragon from 'openseadragon'
 
 const viewerRef = ref(null)
@@ -41,8 +41,20 @@ onMounted(() => {
         showZoomControl: false,
         showFullPageControl: false,
         showHomeControl: false,
+        navigatorAutoFade: false,
     })
 })
+
+// 响应式更新图像源
+watch(() => props.imageUrl, (newUrl) => {
+    if (viewer) {
+        viewer.open({
+            type: 'image',
+            url: newUrl
+        })
+    }
+})
+
 
 function zoomIn() {
     viewer.viewport.zoomBy(1.2)
@@ -60,6 +72,13 @@ function toggleFullScreen() {
 
 defineExpose({viewer, zoomIn, zoomOut, toggleFullScreen})
 
+onUnmounted(() => {
+    if (viewer) {
+        viewer.destroy()
+        viewer = null
+    }
+})
+
 </script>
 
 <style scoped>
@@ -73,16 +92,5 @@ defineExpose({viewer, zoomIn, zoomOut, toggleFullScreen})
     width: 100%;
     height: 100%;
     border: 1px solid #ccc;
-}
-
-.toolbar {
-    position: absolute;
-    bottom: 10px;
-    left: 10px;
-    display: flex;
-    gap: 10px;
-    background: rgba(255, 255, 255, 0.7);
-    padding: 6px 10px;
-    border-radius: 8px;
 }
 </style>

@@ -30,10 +30,10 @@
                         <li @click="updatelike" style="cursor:pointer;">
                             <h5>
                                 <el-icon v-if="islike">
-                                    <Sunrise/>
+                                    <Sunny/>
                                 </el-icon>
                                 <el-icon v-else>
-                                    <Sunny/>
+                                    <Sunrise/>
                                 </el-icon>
                                 点赞{{ likes_count }}
                             </h5>
@@ -41,10 +41,10 @@
                         <li @click="updatefavorite" style="cursor:pointer;">
                             <h5>
                                 <el-icon v-if="isFav">
-                                    <Star/>
+                                    <StarFilled/>
                                 </el-icon>
                                 <el-icon v-else>
-                                    <StarFilled/>
+                                    <Star/>
                                 </el-icon>
                                 收藏
                             </h5>
@@ -61,7 +61,7 @@
                         <div class="m-content">
                             <h1>{{ name }}</h1>
                             <h3>{{ entry_time }}</h3>
-                            <h1>作者：{{ author }}</h1>
+                            <h2>作者：{{ author }}</h2>
                             <p style="text-decoration: underline;">朝代：{{ dynasty }}</p>
                             <p>材料：{{ matrials }} </p>
                             <p>类型：{{ type }}</p>
@@ -92,22 +92,7 @@
                             </p>
                         </div>
                         <div class="comment">
-                            <div class="title">
-                                <h1>评论</h1>
-                                <el-icon class="add" :size="30" @click="showimage" v-show="!isShow" ref="myadd">
-                                    <CirclePlus/>
-                                </el-icon>
-                                <el-icon :size="30" class="jian" v-show="isShow" @click="hideimage" ref="myjian">
-                                    <RemoveFilled/>
-                                </el-icon>
-                            </div>
-                            <div class="c-content" v-show="isShow">
-                                <div class="btn">
-                                    <button>查看</button>
-                                    <button>评论</button>
-                                </div>
-                                <textarea name="" id="" v-model="message" rows="10" cols="66"></textarea>
-                            </div>
+                            <DetailComment :relic_id="Number(id)"/>
                         </div>
                     </div>
                 </div>
@@ -237,6 +222,7 @@ import axios from 'axios'
 import {ElMessage} from 'element-plus'
 import {useRoute, useRouter} from 'vue-router'
 import ArtifactViewer from "@/components/ArtifactViewer.vue";
+import DetailComment from "@/components/DetailComment.vue";
 
 const route = useRoute()
 let id = route.params.id
@@ -314,29 +300,30 @@ async function detailRender(id) {
         } else {
             isVideo.value = false
         }
-
-        const data = await axios.get('http://localhost:5000/api/get_thumsbup', {
-            params: {relic_id: id}
-        })
-        console.log(data.data.user_id)
-        //判断点赞
-        if (data.data.user_id === null) {
-            islike.value = true
-        } else {
-            islike.value = false
+        if (sessionStorage.getItem('isLoggedIn')) {
+            const data = await axios.get('http://localhost:5000/api/get_thumsbup', {
+                params: {relic_id: id, user_id: sessionStorage.getItem('user_id')}
+            })
+            console.log("yes")
+            //判断点赞
+            if (data.data.islike) {
+                islike.value = true
+            } else {
+                islike.value = false
+            }
+            console.log(islike.value)
+            //判断收藏
+            if (data.data.isfav) {
+                isFav.value = true
+            } else {
+                isFav.value = false
+            }
+            //进入页面浏览+1
+            axios.put(`http://localhost:5000/api/put_view/${id}`, {
+                views_count: views_count.value + 1,
+                user_id: sessionStorage.getItem('user_id')
+            })
         }
-        console.log(islike.value)
-        //判断收藏
-        if (data.data.user_favid === null) {
-            isFav.value = true
-        } else {
-            isFav.value = false
-        }
-        //进入页面浏览+1
-        axios.put(`http://localhost:5000/api/put_view/${id}`, {
-            views_count: views_count.value + 1,
-            user_id: sessionStorage.getItem('user_id')
-        })
         // 页面右侧滑动窗口滚动到顶部
         nextTick(() => {
             if (rightSide.value) {
@@ -366,30 +353,52 @@ onMounted(() => {
 
 //点击点赞like+1
 function updatelike() {
-    if (islike.value) {
-        likes_count.value += 1
-        console.log('+1')
+    if (sessionStorage.getItem('isLoggedIn')) {
+        if (islike.value) {
+            likes_count.value -= 1
+            console.log('-1')
+        } else {
+            likes_count.value += 1
+            console.log('+1')
+            console.log(likes_count.value)
+        }
+        axios.put(`http://localhost:5000/api/put_like/${id}`, {
+            likes_count: likes_count.value,
+            user_id: sessionStorage.getItem('user_id'),
+            islike: islike.value,
+        })
+        islike.value = !islike.value
     } else {
-        likes_count.value -= 1
-        console.log('-1')
-        console.log(likes_count.value)
+        ElMessage({
+            message: '请登录后再操作', type: 'warning',
+            showClose: true, plain: true, grouping: true,
+        })
+        router.push({
+            path: '/login',
+            query: {redirect: route.fullPath}
+        })
     }
-    axios.put(`http://localhost:5000/api/put_like/${id}`, {
-        likes_count: likes_count.value,
-        user_id: sessionStorage.getItem('user_id'),
-        islike: islike.value,
-    })
-    islike.value = !islike.value
 }
 
 //点击收藏
 function updatefavorite() {
-    axios.put(`http://localhost:5000/api/put_Fav/${id}`, {
-        user_id: sessionStorage.getItem('user_id'),
-        museum_id: museum_id.value,
-        isFav: isFav.value
-    })
-    isFav.value = !isFav.value
+    if (sessionStorage.getItem('isLoggedIn')) {
+        axios.put(`http://localhost:5000/api/put_Fav/${id}`, {
+            user_id: sessionStorage.getItem('user_id'),
+            museum_id: museum_id.value,
+            isFav: isFav.value
+        })
+        isFav.value = !isFav.value
+    } else {
+        ElMessage({
+            message: '请登录后再操作', type: 'warning',
+            showClose: true, plain: true, grouping: true,
+        })
+        router.push({
+            path: '/login',
+            query: {redirect: route.fullPath}
+        })
+    }
 }
 
 const scale = ref(1)
@@ -409,7 +418,7 @@ const zoomOut = () => {
 }
 
 const toggleFullscreen = () => {
-  viewerComponent.value?.toggleFullScreen()
+    viewerComponent.value?.toggleFullScreen()
 }
 
 const onThumbDrag = (event) => {
@@ -516,16 +525,15 @@ function share() {
 }
 
 // 评论区
-let isShow = ref(false)
-let message = ref('')
+// let isShow = ref(false)
 
-function showimage() {
-    isShow.value = true
-}
-
-function hideimage() {
-    isShow.value = false
-}
+// function showimage() {
+//     isShow.value = true
+// }
+//
+// function hideimage() {
+//     isShow.value = false
+// }
 
 // 监听右侧滚动
 const leftSide = ref(null)
@@ -762,29 +770,6 @@ p {
 
 .right .r-bm .comment {
     width: 100%;
-}
-
-.right .r-bm .comment .title {
-    display: flex;
-    align-items: center;
-}
-
-.right .r-bm .comment .title img {
-    width: 40px;
-    height: 40px;
-}
-
-.right .r-bm .comment .c-content .btn button {
-    width: 50px;
-    height: 30px;
-    margin-left: 20px;
-}
-
-.right .r-bm .comment .c-content textarea {
-    margin-left: 20px;
-    margin-top: 10px;
-    resize: none;
-    outline: none;
 }
 
 /* 响应式布局：窄屏下变上下排列 */

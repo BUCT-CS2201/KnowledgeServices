@@ -1,13 +1,15 @@
 import hashlib
 import os
 from datetime import datetime
+from io import BytesIO
 
 import pymysql
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, g
 from neo4j import GraphDatabase
 from flask_cors import CORS
 from flask_caching import Cache
 from PIL import Image
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
@@ -20,15 +22,25 @@ CORS(app, supports_credentials=True, origins=['http://localhost:8080'])  # 允�
 # neo4j
 driver = GraphDatabase.driver("bolt://127.0.0.1:7687", auth=("neo4j", "your_own_password"))
 
-# 配置 MySQL 连接
-db = pymysql.connect(
-    host='localhost',
-    user='root',
-    password='your_own_password',
-    database='cultural_relics',
-    charset='utf8mb4',
-    cursorclass=pymysql.cursors.DictCursor
-)
+
+def get_db():
+    if 'db' not in g:
+        g.db = pymysql.connect(
+            host='localhost',
+            user='root',
+            password='your_own_password',
+            database='cultural_relics',
+            charset='utf8mb4',
+            cursorclass=pymysql.cursors.DictCursor
+        )
+    return g.db
+
+
+@app.teardown_appcontext
+def close_db(exception):
+    db = g.pop('db', None)
+    if db is not None:
+        db.close()
 
 
 # 加密函数
@@ -106,7 +118,8 @@ def login():
     password = data.get('password')
     hashed_password = hash_password(password)
 
-    cursor = db.cursor()
+    conn = get_db()
+    cursor = conn.cursor()
     sql = "SELECT * FROM user WHERE phone_number = %s"
     cursor.execute(sql, (phone_number))
     result = cursor.fetchone()
@@ -129,21 +142,23 @@ def register():
     phone_number = data.get('phone_number')
     hashed_password = hash_password(password)
 
-    cursor = db.cursor()
+    conn = get_db()
+    cursor = conn.cursor()
     cursor.execute("SELECT * FROM user WHERE phone_number = %s", (phone_number,))
     if cursor.fetchone():
         return jsonify({'status': 'error', 'message': '此手机号已注册'}), 400
 
     cursor.execute("INSERT INTO user (name, password, id_number, phone_number) VALUES (%s, %s, %s, %s)",
                    (username, hashed_password, id_number, phone_number))
-    db.commit()
+    conn.commit()
     return jsonify({'status': 'success', 'message': '注册成功'})
 
 
 # 历史时间线
 @app.route('/timeline-data')
 def get_timeline_data():
-    cursor = db.cursor()
+    conn = get_db()
+    cursor = conn.cursor()
     sql = """
         SELECT cr.name, cr.type, cr.description, cr.size, cr.matrials, 
         cr.dynasty, cr.likes_count, cr.views_count, cr.author, cr.entry_time, ri.img_url, m.museum_name
@@ -218,7 +233,6 @@ def search_artifacts():
     page_size = int(request.args.get("page_size", 20))
     start = (page - 1) * page_size
     end = start + page_size
-    print(f"page={page}, page_size={page_size}, start={start}")
 
     # 高级搜索字段
     author = request.args.get('author')
@@ -310,10 +324,9 @@ def search_artifacts():
     sql += " limit %s offset %s"
     params.extend([page_size, start])
 
-    # print(f"sql: {sql}", f"params: {params}")
-
     try:
-        with db.cursor() as cursor:
+        conn = get_db()
+        with conn.cursor() as cursor:
             cursor.execute(sql, params)
             rows = cursor.fetchall()
 
@@ -343,7 +356,7 @@ def search_artifacts():
 
     finally:
         if 'db' in locals():
-            db.close()
+            conn.close()
 
 
 # 文物详情
@@ -354,7 +367,8 @@ def get_inform():
     if not relic_id:
         return jsonify({'status': 'error', 'message': 'relic_id is required'}), 400
 
-    cursor = db.cursor()
+    conn = get_db()
+    cursor = conn.cursor()
     try:
         # 获取文物有关视频
         sql = "SELECT * FROM relic_video where relic_id=%s LIMIT 4"
@@ -371,11 +385,9 @@ def get_inform():
         cursor.execute(sql, (relic_id,))
         result = cursor.fetchone()
         museum_id = result['museum_id']
-        print(museum_id)
         sql = "SELECT * FROM museum WHERE museum_id = %s"
         cursor.execute(sql, (museum_id,))
         museum = cursor.fetchone()
-        print(museum)
 
         if not result:
             return jsonify({'status': 'error', 'message': 'No relic found with this ID'}), 404
@@ -462,14 +474,14 @@ def get_inform():
 @app.route('/api/put_view/<relic_id>', methods=['PUT'])
 def get_view(relic_id):
     data = request.get_json()
-    print(data)
     if not data:
         return jsonify({'status': 'error', 'message': 'views_count is required'}), 400
 
     views_count = data['views_count']
     user_id = data['user_id']
 
-    cursor = db.cursor()
+    conn = get_db()
+    cursor = conn.cursor()
     sql = "UPDATE cultural_relic SET views_count=%s  WHERE relic_id = %s"
     cursor.execute(sql, (views_count, relic_id,))
 
@@ -480,7 +492,6 @@ def get_view(relic_id):
         """
     cursor.execute(sql_check_history, (user_id, relic_id))
     result = cursor.fetchone()
-    # print(f"result={result}")
 
     if result:
         # 更新浏览时间
@@ -498,7 +509,7 @@ def get_view(relic_id):
             """
         cursor.execute(sql_insert_history, (user_id, relic_id, datetime.now()))
 
-    db.commit()
+    conn.commit()
 
     return jsonify({'status': 'success', 'message': '提交浏览成功'})
 
@@ -507,25 +518,25 @@ def get_view(relic_id):
 @app.route('/api/put_like/<relic_id>', methods=['PUT'])
 def get_like(relic_id):
     data = request.get_json()
-    print(data)
     if not data:
         return jsonify({'status': 'error', 'message': 'like_count is required'}), 400
     likes_count = data['likes_count']
-    cursor = db.cursor()
+    conn = get_db()
+    cursor = conn.cursor()
     # 提交点赞
     sql = "UPDATE cultural_relic SET likes_count=%s  WHERE relic_id = %s"
     cursor.execute(sql, (likes_count, relic_id,))
     user_id = data['user_id']
     islike = data['islike']
     if islike:
-        sql = "INSERT INTO relic_like(user_id,relic_id) VALUES (%s,%s)"
-        cursor.execute(sql, (user_id, relic_id))
-    else:
         sql = "DELETE FROM relic_like where relic_id=%s"
         cursor.execute(sql, (relic_id,))
+    else:
+        sql = "INSERT INTO relic_like(user_id,relic_id) VALUES (%s,%s)"
+        cursor.execute(sql, (user_id, relic_id))
     # 提交收藏
 
-    db.commit()
+    conn.commit()
     return jsonify({'status': 'success', 'message': '提交收藏成功'})
 
 
@@ -533,16 +544,16 @@ def get_like(relic_id):
 @app.route('/api/get_thumsbup', methods=['GET'])
 def get_thumbsup():
     relic_id = request.args.get('relic_id')
-    print(relic_id)
-    cursor = db.cursor()
-    sql = "SELECT user_id from relic_like where relic_id=%s"
-    cursor.execute(sql, (relic_id,))
-    user_id = cursor.fetchone()
-    sql = "SELECT user_id from user_favorite where relic_id=%s"
-    cursor.execute(sql, (relic_id,))
-    user_favid = cursor.fetchone()
-    print(user_id)
-    return jsonify({"user_id": user_id, 'user_favid': user_favid})
+    user_id = request.args.get('user_id')
+    conn = get_db()
+    cursor = conn.cursor()
+    sql = "SELECT * from relic_like where relic_id=%s and user_id=%s"
+    cursor.execute(sql, (relic_id, user_id))
+    islike = cursor.fetchone()
+    sql = "SELECT * from user_favorite where relic_id=%s and user_id=%s"
+    cursor.execute(sql, (relic_id, user_id))
+    isfav = cursor.fetchone()
+    return jsonify({"islike": islike, 'isfav': isfav})
 
 
 # 获得收藏记录
@@ -553,20 +564,23 @@ def get_Fav(Fav_id):
     relic_id = Fav_id
     isFav = data['isFav']
     user_id = data['user_id']
-    cursor = db.cursor()
+    conn = get_db()
+    cursor = conn.cursor()
     if isFav:
-        sql = "INSERT INTO user_favorite(user_id,relic_id,museum_id,favorite_type) VALUES (%s,%s,%s,1)"
-        cursor.execute(sql, (user_id, relic_id, museum_id))
-    else:
         sql = "DELETE FROM user_favorite where relic_id=%s"
         cursor.execute(sql, (relic_id,))
+    else:
+        sql = "INSERT INTO user_favorite(user_id,relic_id,museum_id,favorite_type) VALUES (%s,%s,%s,1)"
+        cursor.execute(sql, (user_id, relic_id, museum_id))
+
     return jsonify('提交成功')
 
 
 # 个人信息展示
 @app.route('/user_info/<int:user_id>', methods=['GET'])
 def get_user_info(user_id):
-    cursor = db.cursor()
+    conn = get_db()
+    cursor = conn.cursor()
 
     # 获取用户信息
     cursor.execute("""
@@ -579,13 +593,16 @@ def get_user_info(user_id):
         return jsonify({"error": "User not found"}), 404
 
     # 查询收藏、点赞、评论的文物ID
-    cursor.execute("SELECT relic_id FROM user_favorite WHERE user_id=%s AND favorite_type=1", (user_id,))
+    cursor.execute("SELECT relic_id FROM user_favorite WHERE user_id=%s AND favorite_type=1",
+                   (user_id,))
     favorite_ids = [row['relic_id'] for row in cursor.fetchall()]
 
     cursor.execute("SELECT relic_id FROM relic_like WHERE user_id=%s", (user_id,))
     like_ids = [row['relic_id'] for row in cursor.fetchall()]
 
-    cursor.execute("SELECT DISTINCT relic_id FROM relic_comment WHERE user_id=%s AND is_deleted=0", (user_id,))
+    cursor.execute(
+        "SELECT DISTINCT relic_id FROM relic_comment WHERE user_id=%s AND is_deleted=0",
+        (user_id,))
     comment_ids = [row['relic_id'] for row in cursor.fetchall()]
 
     cursor.execute("select relic_id FROM user_browsing_history WHERE user_id=%s", (user_id,))
@@ -664,16 +681,17 @@ def update_password():
     hashed_password = hash_password(new_password)
 
     try:
-        cursor = db.cursor()
+        conn = get_db()
+        cursor = conn.cursor()
         cursor.execute("UPDATE user SET password = %s WHERE user_id = %s", (hashed_password, user_id))
-        db.commit()
+        conn.commit()
 
         if cursor.rowcount == 0:
             return jsonify({'status': 'error', 'message': '用户不存在或密码未更新'}), 404
 
         return jsonify({'status': 'success', 'message': '密码修改成功'})
     except Exception as e:
-        db.rollback()
+        conn.rollback()
         return jsonify({'status': 'error', 'message': '服务器错误: ' + str(e)}), 500
 
 
@@ -698,7 +716,8 @@ def update_user_info():
         return jsonify({'status': 'error', 'message': '用户名不能为空'}), 400
 
     try:
-        cursor = db.cursor()
+        conn = get_db()
+        cursor = conn.cursor()
         cursor.execute("""
             UPDATE user
             SET name = %s,
@@ -710,15 +729,192 @@ def update_user_info():
                 qq = %s
             WHERE user_id = %s
         """, (name, description, gender, address, age, wechat, qq, user_id))
-        db.commit()
+        conn.commit()
 
         if cursor.rowcount == 0:
             return jsonify({'status': 'error', 'message': '用户未找到或信息未变动'}), 404
 
         return jsonify({'status': 'success', 'message': '用户信息更新成功'})
     except Exception as e:
-        db.rollback()
+        conn.rollback()
         return jsonify({'status': 'error', 'message': '数据库错误: ' + str(e)}), 500
+
+
+# 用户评论
+@app.route('/user/comment', methods=['POST'])
+def upload_comment():
+    relic_id = request.form.get('relic_id')  # 前端需传文物ID
+    user_id = request.form.get('user_id')  # 前端需传用户ID
+    text = request.form.get('text')
+    files = request.files.getlist('images')
+
+    if not relic_id or not user_id:
+        return jsonify({'status': 'error', 'message': '缺少 relic_id 或 user_id'}), 400
+
+    try:
+        conn = get_db()
+        with conn.cursor() as cursor:
+            # 1. 插入评论内容
+            insert_comment = """
+                    INSERT INTO relic_comment (relic_id, user_id, content)
+                    VALUES (%s, %s, %s)
+                """
+            cursor.execute(insert_comment, (relic_id, user_id, text))
+            comment_id = cursor.lastrowid
+
+            saved_image_urls = []
+
+            for file in files:
+                if file:
+                    # 将原图转为 PNG 格式（使用 PIL）
+                    img = Image.open(file.stream).convert("RGBA")
+                    buffer = BytesIO()
+                    img.save(buffer, format="PNG")
+                    buffer.seek(0)
+
+                    # 插入图片记录（先不保存路径）
+                    insert_image = """
+                            INSERT INTO user_image (image_suffix, user_id, comment_id)
+                            VALUES (%s, %s, %s)
+                        """
+                    cursor.execute(insert_image, ('.png', user_id, comment_id))
+                    image_id = cursor.lastrowid
+
+                    # 保存 PNG 文件
+                    filename = f"{image_id}.png"
+                    dir = os.path.join('static', 'comment_image')
+                    filepath = os.path.join(dir, filename)
+                    os.makedirs(os.path.dirname(filepath), exist_ok=True)
+                    with open(filepath, 'wb') as f:
+                        f.write(buffer.read())
+
+                    image_url = f"/static/comment_image/{filename}"
+                    saved_image_urls.append(image_url)
+
+            conn.commit()
+
+        return jsonify({
+            'status': 'success',
+            'message': '评论提交成功',
+            'comment_id': comment_id,
+            'images': saved_image_urls
+        })
+
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+# 获取评论
+@app.route('/get/comments', methods=['GET'])
+def get_comments():
+    relic_id = request.args.get('relic_id')
+
+    conn = get_db()
+    with conn.cursor() as cursor:
+        # 获取主评论
+        cursor.execute("""
+            SELECT c.comment_id, c.user_id, c.content, c.update_time, u.name, c.reply_count
+            FROM relic_comment c
+            JOIN user u ON c.user_id = u.user_id
+            WHERE c.relic_id = %s AND c.is_deleted = 0 AND c.status = 1 AND c.parent_id IS NULL
+            ORDER BY c.create_time DESC
+        """, (relic_id,))
+        top_comments = cursor.fetchall()
+
+        # 获取子评论
+        cursor.execute("""
+            SELECT c.comment_id, c.parent_id, c.user_id, c.content, c.update_time, u.name
+            FROM relic_comment c
+            JOIN user u ON c.user_id = u.user_id
+            WHERE c.relic_id = %s AND c.is_deleted = 0 AND c.status = 1 AND c.parent_id IS NOT NULL
+            ORDER BY c.create_time ASC
+        """, (relic_id,))
+        child_comments = cursor.fetchall()
+
+        # 获取图片（只针对主评论）
+        cursor.execute("""
+            SELECT comment_id, image_id, image_suffix
+            FROM user_image
+            WHERE status = 1
+        """)
+        image_rows = cursor.fetchall()
+
+    # 构建主评论字典
+    comment_map = {}
+    for c in top_comments:
+        comment_map[c['comment_id']] = {
+            'comment_id': c['comment_id'],
+            'user_id': c['user_id'],
+            'content': c['content'],
+            'update_time': c['update_time'],
+            'name': c['name'],
+            'reply_count': c['reply_count'],
+            'images': [],
+            'children': []
+        }
+
+    # 添加图片（只挂主评论）
+    for img in image_rows:
+        comment_id = img['comment_id']
+        if comment_id in comment_map:
+            url = f"http://localhost:5000/static/comment_image/{img['image_id']}.png"
+            comment_map[comment_id]['images'].append(url)
+
+    # 添加子评论
+    print(child_comments)
+    for reply in child_comments:
+        parent_id = reply['parent_id']
+        sub_comment = {
+            'comment_id': reply['comment_id'],
+            'user_id': reply['user_id'],
+            'content': reply['content'],
+            'update_time': reply['update_time'],
+            'name': reply['name']
+        }
+        if parent_id in comment_map:
+            comment_map[parent_id]['children'].append(sub_comment)
+        else:
+            # 若主评论不存在（例如被删了），可选：创建临时挂载点或跳过
+            print(f"⚠️ 无效 parent_id={parent_id}，跳过该子评论。")
+
+    # 返回按时间排序的主评论列表
+    sorted_comments = sorted(comment_map.values(), key=lambda x: x['update_time'], reverse=True)
+
+    return jsonify(sorted_comments)
+
+
+# 回复评论
+@app.route('/user/reply', methods=['POST'])
+def user_reply():
+    data = request.get_json()
+    parent_id = data.get('parent_id')
+    user_id = data.get('user_id')
+    content = data.get('content')
+
+    if not parent_id or not user_id or not content:
+        return jsonify({'status': 'error', 'message': '缺少必要字段'}), 400
+
+    try:
+        conn = get_db()
+        with conn.cursor() as cursor:
+            # 插入子评论
+            cursor.execute("""
+                INSERT INTO relic_comment (parent_id, user_id, relic_id, content)
+                SELECT %s, %s, relic_id, %s FROM relic_comment WHERE comment_id = %s
+            """, (parent_id, user_id, content, parent_id))
+
+            # 更新主评论的回复计数
+            cursor.execute("""
+                UPDATE relic_comment SET reply_count = reply_count + 1
+                WHERE comment_id = %s
+            """, (parent_id,))
+
+        conn.commit()
+        return jsonify({'status': 'success', 'message': '回复成功'})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
 if __name__ == "__main__":
