@@ -10,10 +10,10 @@
                 <el-row :gutter="24">
                     <el-col :span="2" @click="switchShowPopular()">热门
                         <el-icon v-if="!isShowPop" style="margin-left: 5px;">
-                            <ArrowDown/>
+                            <ArrowDown />
                         </el-icon>
                         <el-icon v-else style="margin-left: 5px;">
-                            <ArrowUp/>
+                            <ArrowUp />
                         </el-icon>
                     </el-col>
                     <el-col :span="19"></el-col>
@@ -21,7 +21,7 @@
                     <el-col :span="3" style="margin:auto 0;">
                         <el-link @click="dialogVisible = true">高级搜索
                             <el-icon class="el-icon--right">
-                                <Setting/>
+                                <Setting />
                             </el-icon>
                         </el-link>
                     </el-col>
@@ -38,8 +38,8 @@
 
             <!--搜索标签-->
             <div class="tags" style="margin: 10px auto;">
-                <el-tag v-for="(tag,index) in selectedTags" :key="index" round closable size="large"
-                        @close="removeTag(tag)" style="margin: 5px" color="pink" type="danger">{{ tag }}
+                <el-tag v-for="(tag, index) in selectedTags" :key="index" round closable size="large"
+                    @close="removeTag(tag)" style="margin: 5px" color="pink" type="danger">{{ tag }}
                 </el-tag>
                 <el-link v-if="selectedTags.length > 0" style="margin-left: 5px" @click="reset()">重置</el-link>
             </div>
@@ -49,15 +49,14 @@
 
             <!--grid/table切换栏-->
             <GridTable :len="artifacts.length" ref="GridTableRef" :onAddTag="addTag" :isgrid="isGridMode"
-                       @update:isgrid="val => isGridMode = val"/>
+                @update:isgrid="val => isGridMode = val" />
 
             <div v-infinite-scroll="fetchArtifacts"
-                 :infinite-scroll-disabled="loading||!hasMore||artifacts.length === 0"
-                 infinite-scroll-distance="10">
+                :infinite-scroll-disabled="loading || !hasMore || artifacts.length === 0" infinite-scroll-distance="10">
                 <!--栅格展示视图-->
-                <ArtifactGrid v-if="isGridMode" :artifacts="artifacts"/>
+                <ArtifactGrid v-if="isGridMode" :artifacts="artifacts" />
                 <!--表格展示视图-->
-                <ArtifactTable v-else ref="tableComponent" :artifacts="artifacts"/>
+                <ArtifactTable v-else ref="tableComponent" :artifacts="artifacts" />
             </div>
 
             <!--搜索结果为空-->
@@ -76,7 +75,7 @@
         font-size: medium;
         text-align: center">
             <el-icon>
-                <Top/>
+                <Top />
             </el-icon>
             回到顶部
         </div>
@@ -85,13 +84,13 @@
 </template>
 
 <script setup>
-import {ref, onMounted} from 'vue'
+import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import SearchBar from '@/components/SearchBar.vue'
 import ArtifactGrid from "@/components/ArtifactGrid.vue";
 import ArtifactTable from "@/components/ArtifactTable.vue";
 import GridTable from "@/components/GridTable.vue";
-import {ElMessage} from "element-plus";
+import { ElMessage } from "element-plus";
 import qs from 'qs';
 import SearchModal from "@/components/SearchModal.vue";
 
@@ -199,7 +198,7 @@ const fetchArtifacts = async (reset = false) => {
     try {
         const response = await axios.get('http://localhost:5000/search', {
             params: queryParams,
-            paramsSerializer: params => qs.stringify(params, {arrayFormat: 'repeat'})
+            paramsSerializer: params => qs.stringify(params, { arrayFormat: 'repeat' })
         })
         const newResults = response.data.results
         //是否加载完毕
@@ -224,12 +223,12 @@ const tableComponent = ref(null)
 
 // 回到顶部逻辑
 const scrollToTop = () => {
-    window.scrollTo({top: 0, behavior: 'smooth'})
+    window.scrollTo({ top: 0, behavior: 'smooth' })
     const wrapper = tableComponent.value?.tableWrapper
     if (wrapper) {
         const scrollWrap = wrapper.querySelector('.el-scrollbar__wrap')
         if (scrollWrap) {
-            scrollWrap.scrollTo({top: 0, behavior: 'smooth'})
+            scrollWrap.scrollTo({ top: 0, behavior: 'smooth' })
         }
     }
 }
@@ -326,5 +325,4 @@ function handleAddTags(tags) {
     color: black;
     border-color: black;
 }
-
 </style>
