@@ -108,12 +108,13 @@ def graph_data():
     keyword = request.args.get("keyword", default=None)
     return jsonify(fetch_graph_data(keyword))
 
+
 # 搜索自动填充
 @app.route('/search-suggestions')
 def search_suggestions():
     conn = get_db()
     cursor = conn.cursor()
-    
+
     # 获取各维度建议词
     suggestions = {
         '朝代': [],
@@ -123,27 +124,28 @@ def search_suggestions():
         '名称': [],
         '作者': []
     }
-    
+
     # 查询各维度数据
     cursor.execute("SELECT DISTINCT dynasty FROM cultural_relic WHERE dynasty IS NOT NULL")
     suggestions['朝代'] = [row['dynasty'] for row in cursor.fetchall()]
-    
+
     cursor.execute("SELECT DISTINCT matrials FROM cultural_relic WHERE matrials IS NOT NULL")
     suggestions['材质'] = [row['matrials'] for row in cursor.fetchall()]
-    
+
     cursor.execute("SELECT DISTINCT museum_name FROM museum")
     suggestions['博物馆'] = [row['museum_name'] for row in cursor.fetchall()]
-    
+
     cursor.execute("SELECT DISTINCT type FROM cultural_relic WHERE type IS NOT NULL")
     suggestions['类型'] = [row['type'] for row in cursor.fetchall()]
-    
+
     cursor.execute("SELECT DISTINCT name FROM cultural_relic WHERE name IS NOT NULL")
     suggestions['名称'] = [row['name'] for row in cursor.fetchall()]
-    
+
     cursor.execute("SELECT DISTINCT author FROM cultural_relic WHERE author IS NOT NULL")
     suggestions['作者'] = [row['author'] for row in cursor.fetchall()]
-    
+
     return jsonify(suggestions)
+
 
 # 登录
 @app.route('/login', methods=['POST'])
@@ -564,8 +566,8 @@ def get_like(relic_id):
     user_id = data['user_id']
     islike = data['islike']
     if islike:
-        sql = "DELETE FROM relic_like where relic_id=%s"
-        cursor.execute(sql, (relic_id,))
+        sql = "DELETE FROM relic_like where relic_id=%s and user_id=%s"
+        cursor.execute(sql, (relic_id, user_id))
     else:
         sql = "INSERT INTO relic_like(user_id,relic_id) VALUES (%s,%s)"
         cursor.execute(sql, (user_id, relic_id))
@@ -592,22 +594,23 @@ def get_thumbsup():
 
 
 # 获得收藏记录
-@app.route('/api/put_Fav/<Fav_id>', methods=['PUT'])
-def get_Fav(Fav_id):
+@app.route('/api/put_Fav/<int:fav_id>', methods=['PUT'])
+def get_fav(fav_id):
     data = request.get_json()
     museum_id = data['museum_id']
-    relic_id = Fav_id
-    isFav = data['isFav']
+    relic_id = fav_id
+    is_fav = data['is_fav']
     user_id = data['user_id']
     conn = get_db()
     cursor = conn.cursor()
-    if isFav:
-        sql = "DELETE FROM user_favorite where relic_id=%s"
-        cursor.execute(sql, (relic_id,))
+    if is_fav:
+        sql = "DELETE FROM user_favorite where relic_id=%s and user_id=%s"
+        cursor.execute(sql, (relic_id, user_id,))
     else:
         sql = "INSERT INTO user_favorite(user_id,relic_id,museum_id,favorite_type) VALUES (%s,%s,%s,1)"
         cursor.execute(sql, (user_id, relic_id, museum_id))
 
+    conn.commit()
     return jsonify('提交成功')
 
 

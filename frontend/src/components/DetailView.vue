@@ -386,7 +386,7 @@ function updatefavorite() {
         axios.put(`http://localhost:5000/api/put_Fav/${id}`, {
             user_id: sessionStorage.getItem('user_id'),
             museum_id: museum_id.value,
-            isFav: isFav.value
+            is_fav: isFav.value
         })
         isFav.value = !isFav.value
     } else {
