@@ -1,5 +1,6 @@
 <script setup>
-import {ref, defineEmits} from 'vue'
+import axios from 'axios'
+const loading = ref(false);
 
 const emit = defineEmits(['addTags', 'close'])
 
@@ -30,6 +31,36 @@ const handleSearch = () => {
     emit('close')
 }
 
+const fetchSuggestions = async (type, queryString, cb) => {
+    try {
+        loading.value = true;
+        const { data } = await axios.get('http://localhost:5000/search-suggestions');
+
+        Object.entries(data).flatMap(([type, values]) =>
+            values.map(value => ({
+                value: `${value}`,
+                type: type,
+                raw: value
+            }))
+        );
+        // 根据类型获取对应维度的建议词（如type为"作者"时，取data["作者"]）
+        const dimensionSuggestions = data[type] || [];
+        // 过滤包含查询字符串的建议词，并格式化为el-autocomplete需要的{value, label}结构
+        const filtered = dimensionSuggestions.filter(item =>
+            item.toLowerCase().includes(queryString.toLowerCase())
+        ).map(item => ({ value: item, label: item }));
+        cb(filtered);
+        // cb(suggestions.filter(item =>
+        //     item.raw.toLowerCase().includes(queryString.toLowerCase())
+        // ));
+    } catch (error) {
+        console.error('获取建议失败:', error);
+        cb([]);
+    } finally {
+        loading.value = false;
+    }
+};
+
 </script>
 
 <template>
@@ -38,19 +69,21 @@ const handleSearch = () => {
             <h1>高级搜索</h1>
         </template>
         <el-form style="margin-left: 10px" label-width="auto">
-            <el-form-item label="作者">
-                <el-input class="advance_input" v-model="author"/>
+            <el-form-item label="作者" class="advance_input">
+                <el-autocomplete :fetch-suggestions="(query, cb) => fetchSuggestions('作者', query, cb)"
+                    v-model="author" />
             </el-form-item>
-            <el-form-item label="名称">
-                <el-input class="advance_input" v-model="name"/>
+            <el-form-item label="名称" class="advance_input">
+                <el-autocomplete :fetch-suggestions="(query, cb) => fetchSuggestions('名称', query, cb)" v-model="name" />
             </el-form-item>
-            <el-form-item label="博物馆">
-                <el-input class="advance_input" v-model="museum"/>
+            <el-form-item label="博物馆" class="advance_input">
+                <el-autocomplete :fetch-suggestions="(query, cb) => fetchSuggestions('博物馆', query, cb)"
+                    v-model="museum" />
             </el-form-item>
             <el-form-item label="时间">
                 <el-col :span="3">
                     <div style="text-align: center">在...之后</div>
-                    <el-input-number controls-position="right" v-model="afterYear" type="number" :min="0"/>
+                    <el-input-number controls-position="right" v-model="afterYear" type="number" :min="0" />
                 </el-col>
                 <el-col :span="1"></el-col>
                 <el-col :span="4">
@@ -61,7 +94,7 @@ const handleSearch = () => {
                 </el-col>
                 <el-col :span="3">
                     <div style="text-align: center">在...之前</div>
-                    <el-input-number controls-position="right" :min="0" v-model="beforeYear" type="number"/>
+                    <el-input-number controls-position="right" :min="0" v-model="beforeYear" type="number" />
                 </el-col>
                 <el-col :span="1"></el-col>
                 <el-col :span="4">
@@ -71,14 +104,16 @@ const handleSearch = () => {
                     </el-radio-group>
                 </el-col>
             </el-form-item>
-            <el-form-item label="类型">
-                <el-input class="advance_input" v-model="type"/>
+            <el-form-item label="类型" class="advance_input">
+                <el-autocomplete :fetch-suggestions="(query, cb) => fetchSuggestions('类型', query, cb)" v-model="type" />
             </el-form-item>
-            <el-form-item label="材料">
-                <el-input class="advance_input" v-model="matrials"/>
+            <el-form-item label="材料" class="advance_input">
+                <el-autocomplete :fetch-suggestions="(query, cb) => fetchSuggestions('材料', query, cb)"
+                    v-model="matrials" />
             </el-form-item>
-            <el-form-item label="朝代">
-                <el-input class="advance_input" v-model="dynasty"/>
+            <el-form-item label="朝代" class="advance_input">
+                <el-autocomplete :fetch-suggestions="(query, cb) => fetchSuggestions('朝代', query, cb)"
+                    v-model="dynasty" />
             </el-form-item>
         </el-form>
 
@@ -86,11 +121,11 @@ const handleSearch = () => {
         <template #footer>
             <div class="dialog-footer">
                 <el-button color="black" @click="$emit('close')"
-                           style="border-radius: var(--el-border-radius-small); width: 150px; height: 40px; margin-left: 30px"
-                           plain>取消
+                    style="border-radius: var(--el-border-radius-small); width: 150px; height: 40px; margin-left: 30px"
+                    plain>取消
                 </el-button>
                 <el-button color="black" @click="handleSearch"
-                           style="border-radius: var(--el-border-radius-small); width: 150px; height: 40px;">
+                    style="border-radius: var(--el-border-radius-small); width: 150px; height: 40px;">
                     搜索
                 </el-button>
             </div>
@@ -100,7 +135,7 @@ const handleSearch = () => {
 
 <style scoped>
 .advance_input {
-    width: 30%;
+    width: 30% !important;
 }
 
 .el-radio__input.is-checked .el-radio__inner {
@@ -108,7 +143,7 @@ const handleSearch = () => {
     border-color: black;
 }
 
-.el-radio__input.is-checked + .el-radio__label {
+.el-radio__input.is-checked+.el-radio__label {
     color: black;
 }
 
@@ -141,5 +176,4 @@ const handleSearch = () => {
 :deep(.el-radio__input:hover + .el-radio__label) {
     color: black;
 }
-
 </style>

@@ -118,7 +118,7 @@ def search_suggestions():
     # 获取各维度建议词
     suggestions = {
         '朝代': [],
-        '材质': [],
+        '材料': [],
         '博物馆': [],
         '类型': [],
         '名称': [],
@@ -130,7 +130,7 @@ def search_suggestions():
     suggestions['朝代'] = [row['dynasty'] for row in cursor.fetchall()]
 
     cursor.execute("SELECT DISTINCT matrials FROM cultural_relic WHERE matrials IS NOT NULL")
-    suggestions['材质'] = [row['matrials'] for row in cursor.fetchall()]
+    suggestions['材料'] = [row['matrials'] for row in cursor.fetchall()]
 
     cursor.execute("SELECT DISTINCT museum_name FROM museum")
     suggestions['博物馆'] = [row['museum_name'] for row in cursor.fetchall()]
