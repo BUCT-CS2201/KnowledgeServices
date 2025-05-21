@@ -1,4 +1,5 @@
 <script setup>
+import {ref, defineEmits} from 'vue'
 import axios from 'axios'
 const loading = ref(false);
 
